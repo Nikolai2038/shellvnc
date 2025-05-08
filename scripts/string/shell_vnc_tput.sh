@@ -16,7 +16,7 @@ shell_vnc_tput() {
     return 1
   fi
 
-  local argument="${1}" && shift
+  local argument="$1" && shift
 
   # "tput" will not work with undefined "TERM" variable (for example, "ssh-copy-id" executes without that) - so we check it first.
   if [ -n "${TERM}" ]; then
