@@ -6,13 +6,13 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null
 . "../messages/_constants.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "../messages/shellvnc_print_info_increase_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "../messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
-. "./shellvnc_commands_must_be_installed.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./shellvnc_commands.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
 shellvnc_check_requirements() {
   shellvnc_print_info_increase_prefix "Checking requirements..." || return "$?"
 
-  shellvnc_commands_must_be_installed which sed grep git || return "$?"
+  shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" which sed grep git || return "$?"
 
   shellvnc_print_success_decrease_prefix "Checking requirements: success!" || return "$?"
 }
