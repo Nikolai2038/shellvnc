@@ -23,8 +23,6 @@ mkdir --parents "${SHELLVNC_DATA_PATH}" 2> /dev/null || return "$?" 2> /dev/null
 # This way, we can uninstall only them when "shellvnc" is uninstalled.
 export SHELLVNC_INSTALLED_COMMANDS_PATH="${SHELLVNC_DATA_PATH}/installed_commands.txt"
 
-export _SHELLVNC_RETURN_CODE_WHEN_FILE_IS_ALREADY_SOURCED=238
-
 export _SHELLVNC_CURRENT_OS_TYPE="${_SHELLVNC_CURRENT_OS_TYPE}"
 export _SHELLVNC_OS_TYPE_WINDOWS="windows"
 export _SHELLVNC_OS_TYPE_LINUX="linux"
@@ -40,6 +38,14 @@ export _SHELLVNC_OS_NAME_MACOS="macos"
 
 export _SHELLVNC_CURRENT_OS_VERSION="${_SHELLVNC_CURRENT_OS_VERSION}"
 
+# Special return code when file is already sourced
+export _SHELLVNC_RETURN_CODE_WHEN_FILE_IS_ALREADY_SOURCED=238
+
+# Check last return code.
+# If it is equal to the code when file is already sourced - return 0.
+# Otherwise - return the last return code.
+#
+# Usage: . "./some_script.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_return_0_if_already_sourced() {
   local return_code="$?"
 
@@ -51,6 +57,9 @@ shellvnc_return_0_if_already_sourced() {
 }
 export -f shellvnc_return_0_if_already_sourced
 
+# Required steps before imports.
+#
+# Usage: shellvnc_required_before_imports <bash_source>
 shellvnc_required_before_imports() {
   if [ "$#" -ne 1 ]; then
     echo "Usage: ${FUNCNAME[0]} <bash_source>" >&2
@@ -58,15 +67,22 @@ shellvnc_required_before_imports() {
   fi
   local bash_source="$1" && shift
 
+  # Check if the file is already sourced
   if [ -n "$(eval "echo \"\${__shellvnc_previous_directory_$(basename "${bash_source}" | sed 's/[^a-zA-Z0-9_]/_/g')}\"")" ]; then
     return "${_SHELLVNC_RETURN_CODE_WHEN_FILE_IS_ALREADY_SOURCED}"
   fi
 
+  # Save current directory to return to it later
   eval "__shellvnc_previous_directory_$(basename "${bash_source}" | sed 's/[^a-zA-Z0-9_]/_/g')=${PWD}" || return "$?"
+
+  # Go to the directory of the script
   cd "$(dirname "${bash_source}")" || return "$?"
 }
 export -f shellvnc_required_before_imports
 
+# Required steps after imports.
+#
+# Usage: shellvnc_required_after_imports <bash_source>
 shellvnc_required_after_imports() {
   if [ "$#" -ne 1 ]; then
     echo "Usage: ${FUNCNAME[0]} <bash_source>" >&2
@@ -74,6 +90,7 @@ shellvnc_required_after_imports() {
   fi
   local bash_source="$1" && shift
 
+  # Return to the previous directory
   eval "cd \"\${__shellvnc_previous_directory_$(basename "${bash_source}" | sed 's/[^a-zA-Z0-9_]/_/g')}\"" || return "$?"
 }
 export -f shellvnc_required_after_imports
@@ -83,7 +100,7 @@ export -f shellvnc_required_after_imports
 # If this file is being executed - it will execute the function itself.
 # If this file is being sourced - it will do nothing.
 #
-# Usage: shellvnc_required_after_function
+# Usage: shellvnc_required_after_function <bash_source> [args...]
 shellvnc_required_after_function() {
   if [ "$#" -lt 1 ]; then
     echo "Usage: ${FUNCNAME[0]} <bash_source>" >&2
@@ -106,6 +123,7 @@ shellvnc_required_after_function() {
   local function_name
   function_name="$(basename "${bash_source}" .sh)" || return "$?"
 
+  # Call the function with the same name as the file
   "${function_name}" "$@" || return "$?"
 
   return 0
