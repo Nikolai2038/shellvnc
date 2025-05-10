@@ -93,13 +93,22 @@ shellvnc_commands() {
     elif [ "${command}" = "remote-viewer" ]; then
       packages_names="virt-viewer"
     elif [ "${command}" = "vncviewer" ]; then
-      packages_names="tigervnc"
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
         packages_names="tigervnc"
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         packages_names="tigervnc"
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         packages_names="tigervnc-viewer"
+      else
+        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+      fi
+    elif [ "${command}" = "vncserver" ]; then
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+        packages_names="tigervnc"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+        packages_names="tigervnc-server"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+        packages_names="tigervnc-standalone-server"
       else
         echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
       fi
@@ -228,7 +237,6 @@ shellvnc_commands() {
       shellvnc_print_info_increase_prefix "${action_word_1} \"${c_highlight}${command}${c_return}\" for ${_SHELLVNC_CURRENT_OS_NAME^} via command \"${c_highlight}${command_to_execute}${c_return}\"..." || return "$?"
       eval "${command_to_execute}" || return "$?"
       shellvnc_print_success_decrease_prefix "${action_word_1} \"${c_highlight}${command}${c_return}\" for ${_SHELLVNC_CURRENT_OS_NAME^} via command \"${c_highlight}${command_to_execute}${c_return}\": success!" || return "$?"
-      return 0
     else
       shellvnc_print_text "You can ${action_word_2} \"${c_highlight}${command}${c_return}\" for ${_SHELLVNC_CURRENT_OS_NAME^} via command: \"${c_highlight}${command_to_execute}${c_return}\"" || return "$?"
       shellvnc_print_error "Please ${action_word_2} it manually or set \"${c_highlight}SHELLVNC_AUTO_INSTALL_PACKAGES=1${c_return}\" to ${action_word_2} it automatically!" || return "$?"
