@@ -5,10 +5,12 @@
 shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 . "./messages/_constants.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_error.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./messages/shellvnc_print_warning.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_info_increase_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./shell/shellvnc_check_requirements.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./shell/shellvnc_commands.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./shellvnc_reconfigure.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
 shellvnc_install() {
@@ -27,6 +29,18 @@ shellvnc_install() {
     shellvnc_print_info_increase_prefix "Installing server..." || return "$?"
 
     shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver || return "$?"
+
+    shellvnc_print_info_increase_prefix "Creating config for user names..." || return "$?"
+    # shellcheck disable=SC2320
+    echo "# Specify user names on each line, for which you want to enable VNC server.
+# Empty lines or lines, which start with \"#\", will be ignored.
+# After changes, save file and run \"./shellvnc.sh reconfigure\".
+${USER}" > "${SHELLVNC_ENABLED_USERS_PATH}" || return "$?"
+    shellvnc_print_success_decrease_prefix "Creating config for user names: success!" || return "$?"
+
+    shellvnc_reconfigure || return "$?"
+
+    shellvnc_print_warning "By default, VNC server will be enabled only for current user. If you want to enable it for some other user, or not for current user, please, edit \"${c_highlight}${SHELLVNC_ENABLED_USERS_PATH}${c_return}\" file and run \"${c_highlight}./shellvnc.sh reconfigure${c_return}\"." || return "$?"
 
     # TODO: Implement server installation
     # ...

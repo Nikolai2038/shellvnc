@@ -23,6 +23,14 @@ mkdir --parents "${SHELLVNC_DATA_PATH}" 2> /dev/null || return "$?" 2> /dev/null
 # This way, we can uninstall only them when "shellvnc" is uninstalled.
 export SHELLVNC_INSTALLED_COMMANDS_PATH="${SHELLVNC_DATA_PATH}/installed_commands.txt"
 
+export SHELLVNC_CONFIG_PATH="${SHELLVNC_PATH}/config"
+mkdir --parents "${SHELLVNC_CONFIG_PATH}" 2> /dev/null || return "$?" 2> /dev/null || exit "$?"
+
+export SHELLVNC_ENABLED_USERS_PATH="${SHELLVNC_CONFIG_PATH}/users.txt"
+touch "${SHELLVNC_ENABLED_USERS_PATH}" 2> /dev/null || return "$?" 2> /dev/null || exit "$?"
+
+export SHELLVNC_CURRENT_ENABLED_USERS_PATH="${SHELLVNC_DATA_PATH}/users.txt"
+
 export _SHELLVNC_CURRENT_OS_TYPE="${_SHELLVNC_CURRENT_OS_TYPE}"
 export _SHELLVNC_OS_TYPE_WINDOWS="windows"
 export _SHELLVNC_OS_TYPE_LINUX="linux"
@@ -154,6 +162,7 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || shellvnc_return_0_if_alr
 . "./scripts/shellvnc_install.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./scripts/shellvnc_uninstall.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./scripts/shellvnc_update.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./scripts/shellvnc_reconfigure.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./scripts/shell/shellvnc_init_current_os_type_and_name.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 
@@ -162,7 +171,7 @@ shellvnc() {
   shellvnc_print_info_increase_prefix "Running scripts..." || return "$?"
 
   if [ "$#" -lt 1 ]; then
-    shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <install|uninstall|update>${c_return}" || return "$?"
+    shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <install|reconfigure|uninstall|update>${c_return}" || return "$?"
     return 1
   fi
 
@@ -171,6 +180,8 @@ shellvnc() {
   local action="$1" && shift
   if [ "${action}" = "install" ]; then
     shellvnc_install "$@" || return "$?"
+  elif [ "${action}" = "reconfigure" ]; then
+    shellvnc_reconfigure "$@" || return "$?"
   elif [ "${action}" = "uninstall" ]; then
     shellvnc_uninstall "$@" || return "$?"
   elif [ "${action}" = "update" ]; then

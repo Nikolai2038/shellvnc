@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Imports
+[ -z "${SHELLVNC_PATH}" ] && { echo "Source \"shell-vnc.sh\" first!" >&2 && return 1 2> /dev/null || exit 1; }
+shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
+. "./messages/shellvnc_print_info_increase_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
+
+shellvnc_reconfigure() {
+  shellvnc_print_info_increase_prefix "Server reconfiguration..." || return "$?"
+
+  # TODO: Remove VNC servers for current users
+  # ...
+
+  # Update current users list
+  cp -T "${SHELLVNC_ENABLED_USERS_PATH}" "${SHELLVNC_CURRENT_ENABLED_USERS_PATH}" || return "$?"
+
+  # TODO: Create VNC servers for current users
+  # ...
+
+  shellvnc_print_success_decrease_prefix "Server reconfiguration: success!" || return "$?"
+}
+
+shellvnc_required_after_function "${BASH_SOURCE[0]}" "$@" || return "$?" 2> /dev/null || exit "$?"
