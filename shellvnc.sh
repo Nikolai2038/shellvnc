@@ -57,6 +57,9 @@ shellvnc_return_0_if_already_sourced() {
 }
 export -f shellvnc_return_0_if_already_sourced
 
+export _SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER=0
+export _SHELLVNC_FILE_IS_SOURCED_PREFIX="_SHELLVNC_FILE_IS_SOURCED_WITH_HASH_"
+
 # Required steps before imports.
 #
 # Usage: shellvnc_required_before_imports <bash_source>
@@ -67,13 +70,23 @@ shellvnc_required_before_imports() {
   fi
   local bash_source="$1" && shift
 
+  # We check both script path and it's contents
+  __shellvnc_script_file_hash="$(sha256sum "${bash_source}" | cut -d ' ' -f 1)" || return "$?"
+
+  __shellvnc_script_file_is_sourced_variable_name="${_SHELLVNC_FILE_IS_SOURCED_PREFIX}${__shellvnc_script_file_hash}"
+  __shellvnc_current_file_is_sourced="$(eval "echo \"\${${__shellvnc_script_file_is_sourced_variable_name}}\"")" || return "$?"
+
   # Check if the file is already sourced
-  if [ -n "$(eval "echo \"\${__shellvnc_previous_directory_$(basename "${bash_source}" | sed 's/[^a-zA-Z0-9_]/_/g')}\"")" ]; then
+  if [ -n "${__shellvnc_current_file_is_sourced}" ]; then
     return "${_SHELLVNC_RETURN_CODE_WHEN_FILE_IS_ALREADY_SOURCED}"
   fi
 
+  # NOTE: Do not use export here - because it will break executing scripts - declared functions will not be available in them
+  eval "${__shellvnc_script_file_is_sourced_variable_name}=1" || return "$?"
+
   # Save current directory to return to it later
-  eval "__shellvnc_previous_directory_$(basename "${bash_source}" | sed 's/[^a-zA-Z0-9_]/_/g')=${PWD}" || return "$?"
+  : "$((_SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER = _SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER + 1))" || return "$?"
+  eval "_SHELLVNC_PWD_BEFORE_IMPORTS_${_SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER}=\"${PWD}\"" || return "$?"
 
   # Go to the directory of the script
   cd "$(dirname "${bash_source}")" || return "$?"
@@ -91,7 +104,9 @@ shellvnc_required_after_imports() {
   local bash_source="$1" && shift
 
   # Return to the previous directory
-  eval "cd \"\${__shellvnc_previous_directory_$(basename "${bash_source}" | sed 's/[^a-zA-Z0-9_]/_/g')}\"" || return "$?"
+  eval "cd \"\${_SHELLVNC_PWD_BEFORE_IMPORTS_${_SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER}}\"" || return "$?"
+  eval "unset _SHELLVNC_PWD_BEFORE_IMPORTS_${_SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER}" || return "$?"
+  : "$((_SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER = _SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER - 1))" || return "$?"
 }
 export -f shellvnc_required_after_imports
 
