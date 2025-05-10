@@ -3,6 +3,7 @@
     "libpulse",
     "pactl",
     "pulseaudio",
-    "shellvnc"
+    "shellvnc",
+    "tigervncserver"
   ]
 }

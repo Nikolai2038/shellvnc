@@ -29,8 +29,6 @@ mkdir --parents "${SHELLVNC_CONFIG_PATH}" 2> /dev/null || return "$?" 2> /dev/nu
 export SHELLVNC_ENABLED_USERS_PATH="${SHELLVNC_CONFIG_PATH}/users.txt"
 touch "${SHELLVNC_ENABLED_USERS_PATH}" 2> /dev/null || return "$?" 2> /dev/null || exit "$?"
 
-export SHELLVNC_CURRENT_ENABLED_USERS_PATH="${SHELLVNC_DATA_PATH}/users.txt"
-
 export _SHELLVNC_CURRENT_OS_TYPE="${_SHELLVNC_CURRENT_OS_TYPE}"
 export _SHELLVNC_OS_TYPE_WINDOWS="windows"
 export _SHELLVNC_OS_TYPE_LINUX="linux"

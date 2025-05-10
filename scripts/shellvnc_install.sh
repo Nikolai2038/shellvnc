@@ -31,11 +31,12 @@ shellvnc_install() {
     shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver || return "$?"
 
     shellvnc_print_info_increase_prefix "Creating config for user names..." || return "$?"
-    # shellcheck disable=SC2320
-    echo "# Specify user names on each line, for which you want to enable VNC server.
-# Empty lines or lines, which start with \"#\", will be ignored.
-# After changes, save file and run \"./shellvnc.sh reconfigure\".
-${USER}" > "${SHELLVNC_ENABLED_USERS_PATH}" || return "$?"
+    cat << EOF | tee "${SHELLVNC_ENABLED_USERS_PATH}" > /dev/null || return "$?"
+# Specify user names on each line, for which you want to enable VNC server.
+# Empty lines or lines, which start with "#", will be ignored.
+# After changes, save file and run "./shellvnc.sh reconfigure".
+${USER}
+EOF
     shellvnc_print_success_decrease_prefix "Creating config for user names: success!" || return "$?"
 
     shellvnc_reconfigure || return "$?"
