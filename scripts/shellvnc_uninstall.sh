@@ -29,10 +29,12 @@ shellvnc_uninstall() {
   if [ "${type}" = "server" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Uninstalling server..." || return "$?"
 
-    shellvnc_print_info_increase_prefix "Clearing VNC users..." || return "$?"
-    rm "${SHELLVNC_ENABLED_USERS_PATH}" || return "$?"
-    shellvnc_print_success_decrease_prefix "Clearing VNC users: success!" || return "$?"
-    shellvnc_reconfigure || return "$?"
+    if [ -f "${SHELLVNC_ENABLED_USERS_PATH}" ]; then
+      shellvnc_print_info_increase_prefix "Clearing VNC users..." || return "$?"
+      rm "${SHELLVNC_ENABLED_USERS_PATH}" || return "$?"
+      shellvnc_print_success_decrease_prefix "Clearing VNC users: success!" || return "$?"
+      shellvnc_reconfigure || return "$?"
+    fi
 
     # TODO: Implement server uninstallation
     # ...
