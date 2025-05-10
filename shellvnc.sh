@@ -11,8 +11,17 @@ export SHELLVNC_AUTO_INSTALL_PACKAGES="${SHELLVNC_AUTO_INSTALL_PACKAGES:-1}"
 # Fail command if any of pipeline blocks fail
 set -o pipefail
 
+# Path to the directory with the "shellvnc.sh".
 export SHELLVNC_PATH
 SHELLVNC_PATH="$(dirname "$0")" || return "$?" 2> /dev/null || exit "$?"
+
+# Scripts data folder
+export SHELLVNC_DATA_PATH="${SHELLVNC_PATH}/data"
+mkdir --parents "${SHELLVNC_DATA_PATH}" 2> /dev/null || return "$?" 2> /dev/null || exit "$?"
+
+# File which contains installed commands for "shellvnc", which were not installed.
+# This way, we can uninstall only them when "shellvnc" is uninstalled.
+export SHELLVNC_INSTALLED_COMMANDS_PATH="${SHELLVNC_DATA_PATH}/installed_commands.txt"
 
 export _SHELLVNC_RETURN_CODE_WHEN_FILE_IS_ALREADY_SOURCED=238
 

@@ -55,6 +55,9 @@ shellvnc_commands() {
         continue
       else
         shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is not installed!" || return "$?"
+
+        # shellcheck disable=SC2320
+        echo "${command}" >> "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
       fi
     elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
       if type "${command}" > /dev/null 2>&1; then
@@ -121,6 +124,26 @@ shellvnc_commands() {
       packages_names="psmisc"
     elif [ "${command}" = "sshpass" ]; then
       packages_names="sshpass"
+    elif [ "${command}" = "ssh" ]; then
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+        packages_names="openssh"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+        packages_names="openssh-clients"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+        packages_names="openssh-client"
+      else
+        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+      fi
+    elif [ "${command}" = "pactl" ]; then
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+        packages_names="libpulse"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+        packages_names="pulseaudio-utils"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+        packages_names="pulseaudio-utils"
+      else
+        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+      fi
     fi
     # ========================================
 

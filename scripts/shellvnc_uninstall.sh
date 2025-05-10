@@ -4,6 +4,7 @@
 [ -z "${SHELLVNC_PATH}" ] && { echo "Source \"shell-vnc.sh\" first!" >&2 && return 1 2> /dev/null || exit 1; }
 shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 . "./messages/_constants.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./messages/shellvnc_print_text.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_error.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_info_increase_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
@@ -24,10 +25,21 @@ shellvnc_uninstall() {
   local type
   type="$1" && shift
 
+  shellvnc_print_info_increase_prefix "Uninstalling installed commands..." || return "$?"
+  if [ -f "${SHELLVNC_INSTALLED_COMMANDS_PATH}" ]; then
+    declare -a commands_to_uninstall=()
+    # shellcheck disable=SC2207
+    commands_to_uninstall=($(cat "${SHELLVNC_INSTALLED_COMMANDS_PATH}")) || return "$?"
+
+    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" "${commands_to_uninstall[@]}" || return "$?"
+    rm "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
+  else
+    shellvnc_print_text "All commands were already installed before \"${c_highlight}shellvnc${c_return}\" installation - none will be uninstalled." || return "$?"
+  fi
+  shellvnc_print_success_decrease_prefix "Uninstalling installed commands: success!" || return "$?"
+
   if [ "${type}" = "server" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Uninstalling server..." || return "$?"
-
-    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" vncviewer || return "$?"
 
     # TODO: Implement server installation
     # ...
@@ -37,8 +49,6 @@ shellvnc_uninstall() {
 
   if [ "${type}" = "client" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Uninstalling client..." || return "$?"
-
-    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" vncviewer || return "$?"
 
     # TODO: Implement client installation
     # ...
