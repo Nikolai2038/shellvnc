@@ -103,12 +103,14 @@ shellvnc_connect() {
   # ========================================
   shellvnc_print_info_increase_prefix "Getting VNC port from the remote server..." || return "$?"
   local vnc_port
-  vnc_port="$(sshpass "-p${password}" \
-    ssh \
-    -p "${port}" \
-    "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
-    "${user}@${host}" \
-    "cat ${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")" || return "$?"
+  vnc_port="$(
+    sshpass "-p${password}" \
+      ssh \
+      -p "${port}" \
+      "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
+      "${user}@${host}" \
+      "cat \"${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\""
+  )" || return "$?"
   shellvnc_print_success_decrease_prefix "Getting VNC port from the remote server: success!" || return "$?"
   # ========================================
 
@@ -213,6 +215,8 @@ shellvnc_connect() {
     # Do not show some dialogs
     -AlertOnFatalError=0
     -ReconnectOnError=0
+
+    -FullscreenSystemKeys
   )
 
   if [ "${SHELLVNC_IS_DEVELOPMENT}" = "1" ]; then

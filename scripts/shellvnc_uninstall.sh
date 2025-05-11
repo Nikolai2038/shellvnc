@@ -30,6 +30,21 @@ shellvnc_uninstall() {
     shellvnc_print_info_increase_prefix "Uninstalling server..." || return "$?"
 
     # ========================================
+    # Desktop entry
+    # ========================================
+    if [ -f /etc/xdg/openbox/autostart.bkp ]; then
+      shellvnc_print_info_increase_prefix "Restoring default config \"${c_highlight}/etc/xdg/openbox/autostart${c_return}\" from \"${c_highlight}/etc/xdg/openbox/autostart.bkp${c_return}\"..." || return "$?"
+      sudo cp -T /etc/xdg/openbox/autostart.bkp /etc/xdg/openbox/autostart || return "$?"
+      sudo rm /etc/xdg/openbox/autostart.bkp || return "$?"
+      shellvnc_print_success_decrease_prefix "Restoring default config \"${c_highlight}/etc/xdg/openbox/autostart${c_return}\" from \"${c_highlight}/etc/xdg/openbox/autostart.bkp${c_return}\": success!" || return "$?"
+    fi
+
+    if [ -f /usr/share/xsessions/shellvnc.desktop ]; then
+      sudo rm /usr/share/xsessions/shellvnc.desktop || return "$?"
+    fi
+    # ========================================
+
+    # ========================================
     # PolKit rules
     # ========================================
     shellvnc_print_info_increase_prefix "Removing PolKit rules..." || return "$?"

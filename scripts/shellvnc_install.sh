@@ -37,7 +37,7 @@ shellvnc_install() {
       return 1
     fi
 
-    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver || return "$?"
+    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver openbox || return "$?"
 
     local vnc_password_for_current_user
     vnc_password_for_current_user="$(shellvnc_generate_password 8)" || return "$?"
@@ -105,12 +105,12 @@ EOF
 \$NeverShared = "yes";
 
 # Perform pixel comparison on framebuffer to reduce unnecessary updates. Can be either 0 (off), 1 (always) or 2 (auto). Default is 2.
-\$CompareFB = 1;
+\$CompareFB = "1";
 
-\$AllowOverride=desktop,AcceptPointerEvents,SendCutText,AcceptCutText,SendPrimary,SetPrimary,FrameRate
+\$AllowOverride = "desktop,AcceptPointerEvents,SendCutText,AcceptCutText,SendPrimary,SetPrimary,FrameRate";
 
 # Increase clipboard size to 100 Mb
-\$MaxCutText = "$((1024 * 1024 * 100))"
+\$MaxCutText = "$((1024 * 1024 * 100))";
 EOF
     else
       shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
@@ -145,6 +145,114 @@ polkit.addRule(function(action, subject) {
 EOF
 
     shellvnc_print_success_decrease_prefix "Adding PolKit rules: success!" || return "$?"
+    # ========================================
+
+    # ========================================
+    # Desktop entry
+    # ========================================
+    shellvnc_print_info_increase_prefix "Creating desktop entry..." || return "$?"
+
+    # Path to file in the target system, where VNC password is stored
+    local path_to_vnc_password=""
+    if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+      path_to_vnc_password=".config/tigervnc/passwd"
+    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      path_to_vnc_password=".vnc/passwd"
+    else
+      shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
+    fi
+
+    if [ -f /etc/xdg/openbox/autostart ]; then
+      if [ -f /etc/xdg/openbox/autostart.bkp ]; then
+        shellvnc_print_text "File \"${c_highlight}/etc/xdg/openbox/autostart.bkp${c_return}\" already exists. Skipping backup." || return "$?"
+      else
+        sudo cp -T /etc/xdg/openbox/autostart /etc/xdg/openbox/autostart.bkp || return "$?"
+      fi
+    fi
+
+    cat << EOF | sudo tee /etc/xdg/openbox/autostart > /dev/null || return "$?"
+#!/bin/bash
+
+# ========================================
+# Connect to VNC server
+# ========================================
+declare -a vnc_args=(
+  -PasswordFile="${path_to_vnc_password}"
+
+  # Disconnect other VNC sessions when connecting
+  -Shared=0
+
+  -MenuKey=Scroll_Lock
+  -ViewOnly=0
+
+  -AcceptClipboard=1
+  -SendPrimary=1
+
+  # Because we use SSH tunnels, we do not need to use IPv6
+  -UseIPv6=0
+
+  # We select quality level ourselves
+  -AutoSelect=0
+
+  # Transfer raw
+  -PreferredEncoding=Raw
+  # Disable custom compression
+  -CustomCompressLevel=0
+  -CompressLevel=9
+  # Disable JPEG compression
+  -NoJPEG=1
+  -QualityLevel=9
+  # If 17 ms is for 60 Hz, then 4 ms is for 240 Hz
+  -PointerEventInterval=4
+  # 0 meaning 8 colors, 1 meaning 64 colors (the default), 2 meaning 256 colors
+  -LowColorLevel=2
+  -FullColor
+
+  # Increase clipboard size to 100 Mb
+  -MaxCutText="\$((1024 * 1024 * 100))"
+
+  -RemoteResize=1
+
+  -SecurityTypes=VncAuth
+
+  # Do not show some dialogs
+  -AlertOnFatalError=0
+  -ReconnectOnError=0
+
+  -FullScreen
+  -FullScreenMode=All
+  -FullscreenSystemKeys
+)
+
+if [ "${SHELLVNC_IS_DEVELOPMENT}" = "1" ]; then
+  vnc_args+=(
+    # Default is "*:stderr:30"
+    -Log="*:stderr:30"
+  )
+else
+  vnc_args+=(
+    # Disable logging on production (this might change in the future)
+    -Log="*:stderr:0"
+  )
+fi
+
+vncviewer "\${vnc_args[@]}" "127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")"
+
+openbox --exit
+EOF
+    sudo chmod +x /etc/xdg/openbox/autostart || return "$?"
+
+    cat << EOF | sudo tee /usr/share/xsessions/shellvnc.desktop > /dev/null || return "$?"
+[Desktop Entry]
+Name=ShellVNC
+Comment=ShellVNC
+Exec=/usr/bin/openbox-session
+TryExec=/usr/bin/openbox-session
+Icon=openbox
+Type=Application
+EOF
+
+    shellvnc_print_success_decrease_prefix "Creating desktop entry: success!" || return "$?"
     # ========================================
 
     shellvnc_print_success_decrease_prefix "Installing server: success!" || return "$?"

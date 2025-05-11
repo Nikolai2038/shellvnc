@@ -153,6 +153,16 @@ shellvnc_commands() {
       else
         echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
       fi
+    elif [ "${command}" = "i3" ]; then
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+        packages_names="i3-wm"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+        packages_names="i3"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+        packages_names="i3-wm"
+      else
+        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+      fi
     fi
     # ========================================
 
