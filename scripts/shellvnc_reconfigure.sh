@@ -44,9 +44,11 @@ shellvnc_reconfigure() {
 
   declare -a new_user_names
   declare -a new_user_passwords
+  declare -a new_user_session_types
   # Get configured users and split to array by words
-  IFS=" " read -r -a new_user_names <<< "$(sed -En 's/^([a-zA-Z_][a-zA-Z_0-9]*):(.+)/\1/p' "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
-  IFS=" " read -r -a new_user_passwords <<< "$(sed -En 's/^([a-zA-Z_][a-zA-Z_0-9]*):(.+)/\2/p' "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
+  IFS=" " read -r -a new_user_names <<< "$(sed -En 's/^([a-zA-Z_][a-zA-Z_0-9]*) (.+) (.+)/\1/p' "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
+  IFS=" " read -r -a new_user_passwords <<< "$(sed -En 's/^([a-zA-Z_][a-zA-Z_0-9]*) (.+) (.+)/\2/p' "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
+  IFS=" " read -r -a new_user_session_types <<< "$(sed -En 's/^([a-zA-Z_][a-zA-Z_0-9]*) (.+) (.+)/\3/p' "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
   local new_users_count="${#new_user_names[@]}"
 
   local displays_for_new_user_names=""
@@ -57,6 +59,7 @@ shellvnc_reconfigure() {
     local display_number="$((new_user_id + 1))"
     local user="${new_user_names[i]}"
     local password="${new_user_passwords[i]}"
+    local session_type="${new_user_session_types[i]}"
     if [ -z "${user}" ] || [ -z "${password}" ]; then
       shellvnc_print_error "User name or password is empty!" || return "$?"
       return 1
@@ -69,6 +72,13 @@ shellvnc_reconfigure() {
     shellvnc_print_info_increase_prefix "Creating VNC password for user \"${c_highlight}${user}${c_return}\"..." || return "$?"
     sudo su - "${user}" sh -c "echo -en '${password}\n${password}\nn\n' | vncpasswd" > /dev/null || return "$?"
     shellvnc_print_success_decrease_prefix "Creating VNC password for user \"${c_highlight}${user}${c_return}\": success!" || return "$?"
+
+    local user_home_directory
+    user_home_directory="$(getent passwd "${user}" | cut -d: -f6)" || return "$?"
+    sudo su - "${user}" sh -c "mkdir --parents \"${user_home_directory}/.vnc\"" > /dev/null || return "$?"
+    cat << EOF | tee "${user_home_directory}/.vnc/config" > /dev/null || return "$?"
+session=${session_type}
+EOF
   done
 
   # Specify new VNC display numbers for users

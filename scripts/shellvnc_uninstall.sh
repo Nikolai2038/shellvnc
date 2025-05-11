@@ -29,6 +29,13 @@ shellvnc_uninstall() {
   if [ "${type}" = "server" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Uninstalling server..." || return "$?"
 
+    if [ -f /etc/tigervnc/vncserver-config-defaults.bkp ]; then
+      shellvnc_print_info_increase_prefix "Restoring default config \"${c_highlight}/etc/tigervnc/vncserver-config-defaults${c_return}\" from \"${c_highlight}/etc/tigervnc/vncserver-config-defaults.bkp${c_return}\"..." || return "$?"
+      sudo cp -T /etc/tigervnc/vncserver-config-defaults.bkp /etc/tigervnc/vncserver-config-defaults || return "$?"
+      sudo rm /etc/tigervnc/vncserver-config-defaults.bkp || return "$?"
+      shellvnc_print_success_decrease_prefix "Restoring default config \"${c_highlight}/etc/tigervnc/vncserver-config-defaults${c_return}\" from \"${c_highlight}/etc/tigervnc/vncserver-config-defaults.bkp${c_return}\": success!" || return "$?"
+    fi
+
     if [ -f "${SHELLVNC_ENABLED_USERS_PATH}" ]; then
       shellvnc_print_info_increase_prefix "Clearing VNC users..." || return "$?"
       rm "${SHELLVNC_ENABLED_USERS_PATH}" || return "$?"
