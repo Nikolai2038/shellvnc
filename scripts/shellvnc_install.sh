@@ -37,7 +37,7 @@ shellvnc_install() {
       return 1
     fi
 
-    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver openbox || return "$?"
+    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver i3 || return "$?"
 
     local vnc_password_for_current_user
     vnc_password_for_current_user="$(shellvnc_generate_password 8)" || return "$?"
@@ -152,6 +152,8 @@ EOF
     # ========================================
     shellvnc_print_info_increase_prefix "Creating desktop entry..." || return "$?"
 
+    sudo mkdir --parents /usr/local/lib/shellvnc || return "$?"
+
     # Path to file in the target system, where VNC password is stored
     local path_to_vnc_password=""
     if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
@@ -161,18 +163,13 @@ EOF
     else
       shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
     fi
+    cat << EOF | sudo tee /usr/local/lib/shellvnc/connect_to_localhost.sh > /dev/null || return "$?"
+#!/bin/bash
 
-    if [ -f /etc/xdg/openbox/autostart ]; then
-      if [ -f /etc/xdg/openbox/autostart.bkp ]; then
-        shellvnc_print_text "File \"${c_highlight}/etc/xdg/openbox/autostart.bkp${c_return}\" already exists. Skipping backup." || return "$?"
-      else
-        sudo cp -T /etc/xdg/openbox/autostart /etc/xdg/openbox/autostart.bkp || return "$?"
-      fi
-    fi
-
-    # This code must be in Bourne Shell syntax on Debian-based systems.
-    cat << EOF | sudo tee /etc/xdg/openbox/autostart > /dev/null || return "$?"
-vnc_args='
+# ========================================
+# Connect to VNC server
+# ========================================
+declare -a vnc_args=(
   -PasswordFile="${path_to_vnc_password}"
 
   # Disconnect other VNC sessions when connecting
@@ -232,24 +229,38 @@ else
   '
 fi
 
-# Remove comments and empty lines
-vnc_args="\$(echo "\${vnc_args}" | sed -En 's/^[[:space:]]*([^#[:space:]].+)\$/\1/p' | tr '\n' ' ')"
-
-vncviewer "\${vnc_args}" "127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")"
-
-openbox --exit
+vncviewer "\${vnc_args[@]}" "127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")" || exit "\$?"
 EOF
-    sudo chmod +x /etc/xdg/openbox/autostart || return "$?"
+    sudo chmod +x /usr/local/lib/shellvnc/connect_to_localhost.sh || return "$?"
+
+    cat << EOF | sudo tee /usr/local/lib/shellvnc/i3_config > /dev/null || return "$?"
+bar {}
+
+exec --no-startup-id /usr/local/lib/shellvnc/connect_to_localhost.sh; i3-msg exit
+EOF
 
     cat << EOF | sudo tee /usr/share/xsessions/shellvnc.desktop > /dev/null || return "$?"
 [Desktop Entry]
 Name=ShellVNC
 Comment=ShellVNC
-Exec=/usr/bin/openbox-session
-TryExec=/usr/bin/openbox-session
-Icon=openbox
+Exec=i3 -c /usr/local/lib/shellvnc/i3_config
+TryExec=i3
 Type=Application
+X-LightDM-DesktopName=ShellVNC
+DesktopNames=ShellVNC
+Keywords=tiling;wm;windowmanager;window;manager;
 EOF
+
+    if [ -f /etc/i3/config ]; then
+      shellvnc_print_info_increase_prefix "Creating backup of \"${c_highlight}/etc/i3/config${c_return}\" to \"${c_highlight}/etc/i3/config.bkp${c_return}\"..." || return "$?"
+      if [ -f /etc/i3/config.bkp ]; then
+        shellvnc_print_text "File \"${c_highlight}/etc/i3/config.bkp${c_return}\" already exists. Skipping backup." || return "$?"
+      else
+        sudo cp -T /etc/i3/config /etc/i3/config.bkp || return "$?"
+      fi
+      shellvnc_print_success_decrease_prefix "Creating backup of \"${c_highlight}/etc/i3/config${c_return}\" to \"${c_highlight}/etc/i3/config.bkp${c_return}\": success!" || return "$?"
+    fi
+    echo '' | sudo tee /etc/i3/config || return "$?"
 
     shellvnc_print_success_decrease_prefix "Creating desktop entry: success!" || return "$?"
     # ========================================
