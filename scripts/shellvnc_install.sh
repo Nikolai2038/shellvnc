@@ -163,13 +163,10 @@ EOF
     else
       shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
     fi
-    cat << EOF | sudo tee /usr/local/lib/shellvnc/connect_to_localhost.sh > /dev/null || return "$?"
-#!/bin/bash
 
-# ========================================
-# Connect to VNC server
-# ========================================
-declare -a vnc_args=(
+    # This code must be in Bourne Shell syntax (not Bash) for Debian-based systems to work correctly
+    cat << EOF | sudo tee /usr/local/lib/shellvnc/connect_to_localhost.sh > /dev/null || return "$?"
+vnc_args='
   -PasswordFile="${path_to_vnc_password}"
 
   # Disconnect other VNC sessions when connecting
@@ -229,15 +226,23 @@ else
   '
 fi
 
-vncviewer "\${vnc_args[@]}" "127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")" || exit "\$?"
+# Remove comments and empty lines
+vnc_args="\$(echo "\${vnc_args}" | sed -En 's/^[[:space:]]*([^#[:space:]].+)\$/\1/p' | tr '\n' ' ')"
+
+echo "vncviewer \${vnc_args} \"127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")\""
+eval "vncviewer \${vnc_args} \"127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")\""
 EOF
     sudo chmod +x /usr/local/lib/shellvnc/connect_to_localhost.sh || return "$?"
 
-    cat << EOF | sudo tee /usr/local/lib/shellvnc/i3_config > /dev/null || return "$?"
-bar {}
-
+    if [ "${SHELLVNC_IS_DEVELOPMENT}" = "1" ]; then
+      cat << EOF | sudo tee /usr/local/lib/shellvnc/i3_config > /dev/null || return "$?"
+exec --no-startup-id /usr/local/lib/shellvnc/connect_to_localhost.sh 2>&1 | tee ~/.shellvnc.connect_to_localhost.log; i3-msg exit
+EOF
+    else
+      cat << EOF | sudo tee /usr/local/lib/shellvnc/i3_config > /dev/null || return "$?"
 exec --no-startup-id /usr/local/lib/shellvnc/connect_to_localhost.sh; i3-msg exit
 EOF
+    fi
 
     cat << EOF | sudo tee /usr/share/xsessions/shellvnc.desktop > /dev/null || return "$?"
 [Desktop Entry]
@@ -251,6 +256,7 @@ DesktopNames=ShellVNC
 Keywords=tiling;wm;windowmanager;window;manager;
 EOF
 
+    # "i3" applies default config from "/etc/i3/config" file - we disable that
     if [ -f /etc/i3/config ]; then
       shellvnc_print_info_increase_prefix "Creating backup of \"${c_highlight}/etc/i3/config${c_return}\" to \"${c_highlight}/etc/i3/config.bkp${c_return}\"..." || return "$?"
       if [ -f /etc/i3/config.bkp ]; then
@@ -260,7 +266,7 @@ EOF
       fi
       shellvnc_print_success_decrease_prefix "Creating backup of \"${c_highlight}/etc/i3/config${c_return}\" to \"${c_highlight}/etc/i3/config.bkp${c_return}\": success!" || return "$?"
     fi
-    echo '' | sudo tee /etc/i3/config || return "$?"
+    echo '' | sudo tee /etc/i3/config > /dev/null || return "$?"
 
     shellvnc_print_success_decrease_prefix "Creating desktop entry: success!" || return "$?"
     # ========================================

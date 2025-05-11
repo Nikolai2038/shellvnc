@@ -14,43 +14,46 @@ shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null 
 shellvnc_reconfigure() {
   shellvnc_print_info_increase_prefix "Server reconfiguration..." || return "$?"
 
-  declare -a current_displays
-  # Get current VNC display numbers and split to array by words
-  IFS=" " read -r -a current_displays <<< "$(sed -En 's/^:([0-9]+)=(.+)/\1/p' /etc/tigervnc/vncserver.users)" || return "$?"
+  if [ -f /etc/tigervnc/vncserver.users ]; then
+    declare -a current_displays
+    # Get current VNC display numbers and split to array by words
+    IFS=" " read -r -a current_displays <<< "$(sed -En 's/^:([0-9]+)=(.+)/\1/p' /etc/tigervnc/vncserver.users)" || return "$?"
 
-  declare -a current_user_names
-  # Get current VNC user names and split to array by words
-  IFS=" " read -r -a current_user_names <<< "$(sed -En 's/^:([0-9]+)=(.+)/\2/p' /etc/tigervnc/vncserver.users)" || return "$?"
+    declare -a current_user_names
+    # Get current VNC user names and split to array by words
+    IFS=" " read -r -a current_user_names <<< "$(sed -En 's/^:([0-9]+)=(.+)/\2/p' /etc/tigervnc/vncserver.users)" || return "$?"
 
-  local user
-  for user in "${current_user_names[@]}"; do
-    local user_home_directory
-    user_home_directory="$(getent passwd "${user}" | cut -d: -f6)" || return "$?"
+    local user
+    for user in "${current_user_names[@]}"; do
+      local user_home_directory
+      user_home_directory="$(getent passwd "${user}" | cut -d: -f6)" || return "$?"
 
-    sudo su - "${user}" sh -c "if [ -f \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\" ]; then rm \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\"; fi" || return "$?"
-  done
+      sudo su - "${user}" sh -c "if [ -f \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\" ]; then rm \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\"; fi" || return "$?"
+    done
 
-  # Remove VNC servers for current users
-  shellvnc_print_info_increase_prefix "Removing old VNC servers..." || return "$?"
-  local display
-  for display in "${current_displays[@]}"; do
-    local service_name
-    if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-      service_name="vncserver@:${display}.service"
-    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-      service_name="tigervncserver@:${display}.service"
-    else
-      shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
-    fi
+    # Remove VNC servers for current users
+    shellvnc_print_info_increase_prefix "Removing old VNC servers..." || return "$?"
+    local display
+    for display in "${current_displays[@]}"; do
+      local service_name
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+        service_name="vncserver@:${display}.service"
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+        service_name="tigervncserver@:${display}.service"
+      else
+        shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
+      fi
 
-    if systemctl cat "${service_name}" > /dev/null 2>&1; then
-      sudo systemctl disable --now "${service_name}" || return "$?"
-    fi
-  done
-  shellvnc_print_success_decrease_prefix "Removing old VNC servers: success!" || return "$?"
+      if systemctl cat "${service_name}" > /dev/null 2>&1; then
+        sudo systemctl disable --now "${service_name}" || return "$?"
+      fi
+    done
+    shellvnc_print_success_decrease_prefix "Removing old VNC servers: success!" || return "$?"
+  fi
 
   if [ ! -f "${SHELLVNC_ENABLED_USERS_PATH}" ]; then
     shellvnc_print_warning "No users configured in \"${c_highlight}${SHELLVNC_ENABLED_USERS_PATH}${c_return}\" file - no VNC servers will be created." || return "$?"
+    shellvnc_print_success_decrease_prefix "Server reconfiguration: success!" || return "$?"
     return 0
   fi
 
