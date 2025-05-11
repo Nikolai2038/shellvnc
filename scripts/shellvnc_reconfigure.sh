@@ -36,19 +36,33 @@ shellvnc_reconfigure() {
   done
   shellvnc_print_success_decrease_prefix "Removing old VNC servers: success!" || return "$?"
 
-  declare -a new_users
+  declare -a new_user_names
+  declare -a new_user_passwords
   # Get configured users and split to array by words
-  IFS=" " read -r -a new_users <<< "$(shellvnc_cat_without_comments_and_empty_lines "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
+  IFS=" " read -r -a new_user_names <<< "$(sed -En 's/^([a-zA-Z_][a-zA-Z_0-9]*):(.+)/\1/p' "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
+  IFS=" " read -r -a new_user_passwords <<< "$(sed -En 's/^([a-zA-Z_][a-zA-Z_0-9]*):(.+)/\2/p' "${SHELLVNC_ENABLED_USERS_PATH}")" || return "$?"
+  local new_users_count="${#new_user_names[@]}"
 
+  local displays_for_new_user_names=""
   declare -a new_displays=()
 
-  local displays_for_new_users=""
-  local display_number=1
-  for user in "${new_users[@]}"; do
-    displays_for_new_users+="
-:${display_number}=${user}"
+  local new_user_id
+  for ((new_user_id = 0; new_user_id < new_users_count; new_user_id++)); do
+    local display_number="$((new_user_id + 1))"
+    local user="${new_user_names[i]}"
+    local password="${new_user_passwords[i]}"
+    if [ -z "${user}" ] || [ -z "${password}" ]; then
+      shellvnc_print_error "User name or password is empty!" || return "$?"
+      return 1
+    fi
+
     new_displays+=("${display_number}")
-    display_number=$((display_number + 1))
+    displays_for_new_user_names+="
+:${display_number}=${user}"
+
+    shellvnc_print_info_increase_prefix "Creating VNC password for user \"${c_highlight}${user}${c_return}\"..." || return "$?"
+    sudo su - "${user}" sh -c "echo -en '${password}\n${password}\nn\n' | vncpasswd" > /dev/null || return "$?"
+    shellvnc_print_success_decrease_prefix "Creating VNC password for user \"${c_highlight}${user}${c_return}\": success!" || return "$?"
   done
 
   # Specify new VNC display numbers for users
@@ -61,7 +75,7 @@ shellvnc_reconfigure() {
 #
 # :2=andrew
 # :3=lisa
-${displays_for_new_users}
+${displays_for_new_user_names}
 EOF
   shellvnc_print_success_decrease_prefix "Updating \"${c_highlight}/etc/tigervnc/vncserver.users${c_return}\": success!" || return "$?"
 

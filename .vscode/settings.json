@@ -4,6 +4,7 @@
     "pactl",
     "pulseaudio",
     "shellvnc",
-    "tigervncserver"
+    "tigervncserver",
+    "vncpasswd"
   ]
 }
