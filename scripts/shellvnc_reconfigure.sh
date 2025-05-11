@@ -66,6 +66,15 @@ shellvnc_reconfigure() {
   local displays_for_new_user_names=""
   declare -a new_displays=()
 
+  local config_path_from_user_home_directory
+  if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+    config_path_from_user_home_directory=".config/tigervnc/config"
+  elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+    config_path_from_user_home_directory=".vnc/config"
+  else
+    shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
+  fi
+
   local new_user_id
   for ((new_user_id = 0; new_user_id < new_users_count; new_user_id++)); do
     local display_number="$((new_user_id + 1))"
@@ -88,7 +97,7 @@ shellvnc_reconfigure() {
     local user_home_directory
     user_home_directory="$(getent passwd "${user}" | cut -d: -f6)" || return "$?"
     sudo su - "${user}" sh -c "mkdir --parents \"${user_home_directory}/.vnc\"" > /dev/null || return "$?"
-    cat << EOF | tee "${user_home_directory}/.vnc/config" > /dev/null || return "$?"
+    cat << EOF | tee "${user_home_directory}/${config_path_from_user_home_directory}" > /dev/null || return "$?"
 session=${session_type}
 EOF
 
