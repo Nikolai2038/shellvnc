@@ -32,13 +32,15 @@ shellvnc_uninstall() {
     # ========================================
     # Desktop entry
     # ========================================
-    if [ -f /etc/xdg/openbox/autostart.bkp ]; then
-      shellvnc_print_info_increase_prefix "Restoring default config \"${c_highlight}/etc/xdg/openbox/autostart${c_return}\" from \"${c_highlight}/etc/xdg/openbox/autostart.bkp${c_return}\"..." || return "$?"
-      sudo cp -T /etc/xdg/openbox/autostart.bkp /etc/xdg/openbox/autostart || return "$?"
-      sudo rm /etc/xdg/openbox/autostart.bkp || return "$?"
-      shellvnc_print_success_decrease_prefix "Restoring default config \"${c_highlight}/etc/xdg/openbox/autostart${c_return}\" from \"${c_highlight}/etc/xdg/openbox/autostart.bkp${c_return}\": success!" || return "$?"
+
+    if [ -f /etc/i3/config.bkp ]; then
+      shellvnc_print_info_increase_prefix "Restoring default config \"${c_highlight}/etc/i3/config${c_return}\" from \"${c_highlight}/etc/i3/config.bkp${c_return}\"..." || return "$?"
+      sudo cp -T /etc/i3/config.bkp /etc/i3/config || return "$?"
+      sudo rm /etc/i3/config.bkp || return "$?"
+      shellvnc_print_success_decrease_prefix "Restoring default config \"${c_highlight}/etc/i3/config${c_return}\" from \"${c_highlight}/etc/i3/config.bkp${c_return}\": success!" || return "$?"
     fi
 
+    sudo rm -rf /usr/local/lib/shellvnc || return "$?"
     if [ -f /usr/share/xsessions/shellvnc.desktop ]; then
       sudo rm /usr/share/xsessions/shellvnc.desktop || return "$?"
     fi
