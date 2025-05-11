@@ -73,14 +73,36 @@ EOF
     fi
 
     if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-      cat << 'EOF' | sudo tee /etc/tigervnc/vncserver-config-defaults > /dev/null || return "$?"
-localhost=no
+      # See "man Xvnc"
+      cat << EOF | sudo tee /etc/tigervnc/vncserver-config-defaults > /dev/null || return "$?"
 geometry=800x600
+FrameRate=240
+
+localhost=no
+SecurityTypes=Plain
+PlainUsers=*
+UseBlacklist=no
+PamService=login
+NeverShared=yes
+
+# Increase clipboard size to 100 Mb
+MaxCutText=$((1024 * 1024 * 100))
 EOF
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-      cat << 'EOF' | sudo tee /etc/tigervnc/vncserver-config-defaults > /dev/null || return "$?"
-$localhost = "no";
-$geometry = "800x600";
+      # See "man vncserver-config-defaults"
+      cat << EOF | sudo tee /etc/tigervnc/vncserver-config-defaults > /dev/null || return "$?"
+\$geometry = "800x600";
+\$FrameRate = "240";
+
+\$localhost = "no";
+\$SecurityTypes = "Plain";
+\$PlainUsers = "*";
+\$UseBlacklist = "no";
+\$PamService = "login";
+\$NeverShared = "yes";
+
+# Increase clipboard size to 100 Mb
+\$MaxCutText = "$((1024 * 1024 * 100))"
 EOF
     else
       shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
