@@ -4,6 +4,7 @@
 [ -z "${SHELLVNC_PATH}" ] && { echo "Source \"shell-vnc.sh\" first!" >&2 && return 1 2> /dev/null || exit 1; }
 shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 . "./messages/_constants.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./messages/shellvnc_print_warning.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_info_increase_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_throw_error_not_implemented.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
@@ -35,6 +36,11 @@ shellvnc_reconfigure() {
     fi
   done
   shellvnc_print_success_decrease_prefix "Removing old VNC servers: success!" || return "$?"
+
+  if [ ! -f "${SHELLVNC_ENABLED_USERS_PATH}" ]; then
+    shellvnc_print_warning "No users configured in \"${c_highlight}${SHELLVNC_ENABLED_USERS_PATH}${c_return}\" file - no VNC servers will be created." || return "$?"
+    return 0
+  fi
 
   declare -a new_user_names
   declare -a new_user_passwords

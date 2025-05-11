@@ -33,8 +33,8 @@ shellvnc_uninstall() {
       shellvnc_print_info_increase_prefix "Clearing VNC users..." || return "$?"
       rm "${SHELLVNC_ENABLED_USERS_PATH}" || return "$?"
       shellvnc_print_success_decrease_prefix "Clearing VNC users: success!" || return "$?"
-      shellvnc_reconfigure || return "$?"
     fi
+    shellvnc_reconfigure || return "$?"
 
     # TODO: Implement server uninstallation
     # ...
