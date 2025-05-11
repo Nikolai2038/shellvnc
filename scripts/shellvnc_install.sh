@@ -109,11 +109,35 @@ EOF
     fi
 
     shellvnc_reconfigure || return "$?"
-
     shellvnc_print_warning "By default, VNC server will be enabled only for current user. If you want to enable it for some other user, or not for current user, please, edit \"${c_highlight}${SHELLVNC_ENABLED_USERS_PATH}${c_return}\" file and run \"${c_highlight}./shellvnc.sh reconfigure${c_return}\"." || return "$?"
 
-    # TODO: Implement server installation
-    # ...
+    # ========================================
+    # PolKit rules
+    # ========================================
+    shellvnc_print_info_increase_prefix "Adding PolKit rules..." || return "$?"
+
+    # Allow administrators to reboot, power off, etc., including when other users may still be logged in
+    cat << EOF | sudo tee /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-reboot.rules > /dev/null || return "$?"
+polkit.addRule(function(action, subject) {
+  // Allow administrators to reboot, power off, etc., including when other users may still be logged in
+  if (action.id.startsWith("org.freedesktop.login1.") && (subject.isInGroup("sudo") || subject.isInGroup("wheel"))) {
+    return polkit.Result.YES;
+  }
+});
+EOF
+
+    # Allow administrators to configure NetworkManager
+    cat << EOF | sudo tee /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-change-network.rules > /dev/null || return "$?"
+polkit.addRule(function(action, subject) {
+  // Allow administrators to configure NetworkManager
+  if (action.id.startsWith("org.freedesktop.NetworkManager.") && (subject.isInGroup("sudo") || subject.isInGroup("wheel"))) {
+    return polkit.Result.YES;
+  }
+});
+EOF
+
+    shellvnc_print_success_decrease_prefix "Adding PolKit rules: success!" || return "$?"
+    # ========================================
 
     shellvnc_print_success_decrease_prefix "Installing server: success!" || return "$?"
   fi
@@ -122,9 +146,6 @@ EOF
     shellvnc_print_info_increase_prefix "Installing client..." || return "$?"
 
     shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip || return "$?"
-
-    # TODO: Implement client installation
-    # ...
 
     shellvnc_print_success_decrease_prefix "Installing client: success!" || return "$?"
   fi

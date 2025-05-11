@@ -29,6 +29,22 @@ shellvnc_uninstall() {
   if [ "${type}" = "server" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Uninstalling server..." || return "$?"
 
+    # ========================================
+    # PolKit rules
+    # ========================================
+    shellvnc_print_info_increase_prefix "Removing PolKit rules..." || return "$?"
+
+    if sudo [ -f /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-change-network.rules ]; then
+      sudo rm /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-change-network.rules
+    fi
+
+    if sudo [ -f /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-reboot.rules ]; then
+      sudo rm /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-reboot.rules
+    fi
+
+    shellvnc_print_success_decrease_prefix "Removing PolKit rules: success!" || return "$?"
+    # ========================================
+
     if [ -f /etc/tigervnc/vncserver-config-defaults.bkp ]; then
       shellvnc_print_info_increase_prefix "Restoring default config \"${c_highlight}/etc/tigervnc/vncserver-config-defaults${c_return}\" from \"${c_highlight}/etc/tigervnc/vncserver-config-defaults.bkp${c_return}\"..." || return "$?"
       sudo cp -T /etc/tigervnc/vncserver-config-defaults.bkp /etc/tigervnc/vncserver-config-defaults || return "$?"

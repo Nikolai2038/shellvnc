@@ -60,11 +60,25 @@ shellvnc_connect() {
   # We use VNC passwords to protect VNC connections from other users.
   # ========================================
   shellvnc_print_info_increase_prefix "Getting VNC password from the remote server..." || return "$?"
+
+  local target_os_name
+  target_os_name="$(sshpass "-p${password}" \
+    ssh \
+    -p "${port}" \
+    "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
+    "${user}@${host}" \
+    "sed -n 's/^ID=//p' /etc/os-release")" || return "$?"
+
+  if [ -z "${target_os_name}" ]; then
+    shellvnc_print_error "Could not determine the target OS name!" || return "$?"
+    return 1
+  fi
+
   # Path to file in the target system, where VNC password is stored
   local path_to_vnc_password=""
-  if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+  if [ "${target_os_name}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${target_os_name}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
     path_to_vnc_password=".config/tigervnc/passwd"
-  elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+  elif [ "${target_os_name}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
     path_to_vnc_password=".vnc/passwd"
   else
     shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
