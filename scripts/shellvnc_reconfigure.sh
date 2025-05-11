@@ -16,7 +16,19 @@ shellvnc_reconfigure() {
 
   declare -a current_displays
   # Get current VNC display numbers and split to array by words
-  IFS=" " read -r -a current_displays <<< "$(sed -En 's/^:([0-9]+)=.+/\1/p' /etc/tigervnc/vncserver.users)" || return "$?"
+  IFS=" " read -r -a current_displays <<< "$(sed -En 's/^:([0-9]+)=(.+)/\1/p' /etc/tigervnc/vncserver.users)" || return "$?"
+
+  declare -a current_user_names
+  # Get current VNC user names and split to array by words
+  IFS=" " read -r -a current_user_names <<< "$(sed -En 's/^:([0-9]+)=(.+)/\2/p' /etc/tigervnc/vncserver.users)" || return "$?"
+
+  local user
+  for user in "${current_user_names[@]}"; do
+    local user_home_directory
+    user_home_directory="$(getent passwd "${user}" | cut -d: -f6)" || return "$?"
+
+    sudo su - "${user}" sh -c "if [ -f \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\" ]; then rm \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\"; fi" || return "$?"
+  done
 
   # Remove VNC servers for current users
   shellvnc_print_info_increase_prefix "Removing old VNC servers..." || return "$?"
@@ -79,6 +91,10 @@ shellvnc_reconfigure() {
     cat << EOF | tee "${user_home_directory}/.vnc/config" > /dev/null || return "$?"
 session=${session_type}
 EOF
+
+    local vnc_port
+    vnc_port="$((5900 + display_number))" || return "$?"
+    sudo su - "${user}" sh -c "echo \"${vnc_port}\" > \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\"" || return "$?"
   done
 
   # Specify new VNC display numbers for users

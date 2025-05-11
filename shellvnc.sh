@@ -1,19 +1,25 @@
 #!/bin/bash
 
-# ========================================
-# Settings, which can be overridden by the user
-# ========================================
-export SHELLVNC_IS_DEBUG="${SHELLVNC_IS_DEBUG:-0}"
-export SHELLVNC_MESSAGE_PREFIX_SCALE="${SHELLVNC_MESSAGE_PREFIX_SCALE:-2}"
-export SHELLVNC_AUTO_INSTALL_PACKAGES="${SHELLVNC_AUTO_INSTALL_PACKAGES:-1}"
-# ========================================
-
 # Fail command if any of pipeline blocks fail
 set -o pipefail
 
-# Path to the directory with the "shellvnc.sh".
-export SHELLVNC_PATH
+# Path to the directory with the main script
+export SHELLVNC_PATH=""
 SHELLVNC_PATH="$(dirname "$0")" || return "$?" 2> /dev/null || exit "$?"
+
+# ========================================
+# Settings
+# ========================================
+# Create settings file from template if it does not exist
+if [ ! -f "${SHELLVNC_PATH}/env.sh" ]; then
+  cp "${SHELLVNC_PATH}/env.sh.example" "${SHELLVNC_PATH}/env.sh" || return "$?" 2> /dev/null || exit "$?"
+fi
+
+# Apply settings from the file
+# shellcheck source=./env.sh
+# shellcheck disable=SC1091
+. "${SHELLVNC_PATH}/env.sh" || return "$?" 2> /dev/null || exit "$?"
+# ========================================
 
 # Scripts data folder
 export SHELLVNC_DATA_PATH="${SHELLVNC_PATH}/data"
@@ -27,6 +33,8 @@ export SHELLVNC_CONFIG_PATH="${SHELLVNC_PATH}/config"
 mkdir --parents "${SHELLVNC_CONFIG_PATH}" 2> /dev/null || return "$?" 2> /dev/null || exit "$?"
 
 export SHELLVNC_ENABLED_USERS_PATH="${SHELLVNC_CONFIG_PATH}/users.txt"
+
+export SHELLVNC_PATH_TO_FILE_WITH_USER_PORT=".vnc/shellvnc_port"
 
 export _SHELLVNC_CURRENT_OS_TYPE="${_SHELLVNC_CURRENT_OS_TYPE}"
 export _SHELLVNC_OS_TYPE_WINDOWS="windows"
@@ -160,6 +168,7 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || shellvnc_return_0_if_alr
 . "./scripts/shellvnc_uninstall.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./scripts/shellvnc_update.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./scripts/shellvnc_reconfigure.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./scripts/shellvnc_connect.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./scripts/shell/shellvnc_init_current_os_type_and_name.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 
@@ -168,7 +177,7 @@ shellvnc() {
   shellvnc_print_info_increase_prefix "Running scripts..." || return "$?"
 
   if [ "$#" -lt 1 ]; then
-    shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <install|reconfigure|uninstall|update>${c_return}" || return "$?"
+    shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <install|reconfigure|uninstall|update|connect>${c_return}" || return "$?"
     return 1
   fi
 
@@ -183,6 +192,8 @@ shellvnc() {
     shellvnc_uninstall "$@" || return "$?"
   elif [ "${action}" = "update" ]; then
     shellvnc_update "$@" || return "$?"
+  elif [ "${action}" = "connect" ]; then
+    shellvnc_connect "$@" || return "$?"
   else
     shellvnc_print_error "Unknown action: \"${c_highlight}${action}${c_return}\"." || return "$?"
     return 1

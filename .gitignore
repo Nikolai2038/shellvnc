@@ -3,3 +3,6 @@
 
 # Config data
 /config
+
+# User defined variables
+/env.sh

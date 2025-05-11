@@ -78,8 +78,8 @@ EOF
 geometry=800x600
 FrameRate=240
 
-localhost=no
-SecurityTypes=Plain
+localhost=yes
+SecurityTypes=VncAuth
 PlainUsers=*
 UseBlacklist=no
 PamService=login
@@ -94,8 +94,8 @@ EOF
 \$geometry = "800x600";
 \$FrameRate = "240";
 
-\$localhost = "no";
-\$SecurityTypes = "Plain";
+\$localhost = "yes";
+\$SecurityTypes = "VncAuth";
 \$PlainUsers = "*";
 \$UseBlacklist = "no";
 \$PamService = "login";
