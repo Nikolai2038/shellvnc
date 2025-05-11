@@ -170,13 +170,9 @@ EOF
       fi
     fi
 
+    # This code must be in Bourne Shell syntax on Debian-based systems.
     cat << EOF | sudo tee /etc/xdg/openbox/autostart > /dev/null || return "$?"
-#!/bin/bash
-
-# ========================================
-# Connect to VNC server
-# ========================================
-declare -a vnc_args=(
+vnc_args='
   -PasswordFile="${path_to_vnc_password}"
 
   # Disconnect other VNC sessions when connecting
@@ -222,21 +218,24 @@ declare -a vnc_args=(
   -FullScreen
   -FullScreenMode=All
   -FullscreenSystemKeys
-)
+'
 
 if [ "${SHELLVNC_IS_DEVELOPMENT}" = "1" ]; then
-  vnc_args+=(
+  vnc_args="\${vnc_args}"'
     # Default is "*:stderr:30"
     -Log="*:stderr:30"
-  )
+  '
 else
-  vnc_args+=(
+  vnc_args="\${vnc_args}"'
     # Disable logging on production (this might change in the future)
     -Log="*:stderr:0"
-  )
+  '
 fi
 
-vncviewer "\${vnc_args[@]}" "127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")"
+# Remove comments and empty lines
+vnc_args="\$(echo "\${vnc_args}" | sed -En 's/^[[:space:]]*([^#[:space:]].+)\$/\1/p' | tr '\n' ' ')"
+
+vncviewer "\${vnc_args}" "127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")"
 
 openbox --exit
 EOF
