@@ -81,9 +81,13 @@ FrameRate=240
 localhost=yes
 SecurityTypes=VncAuth
 PlainUsers=*
-UseBlacklist=no
 PamService=login
 NeverShared=yes
+
+# Perform pixel comparison on framebuffer to reduce unnecessary updates. Can be either 0 (off), 1 (always) or 2 (auto). Default is 2.
+CompareFB=1
+
+AllowOverride=desktop,AcceptPointerEvents,SendCutText,AcceptCutText,SendPrimary,SetPrimary,FrameRate
 
 # Increase clipboard size to 100 Mb
 MaxCutText=$((1024 * 1024 * 100))
@@ -97,9 +101,13 @@ EOF
 \$localhost = "yes";
 \$SecurityTypes = "VncAuth";
 \$PlainUsers = "*";
-\$UseBlacklist = "no";
 \$PamService = "login";
 \$NeverShared = "yes";
+
+# Perform pixel comparison on framebuffer to reduce unnecessary updates. Can be either 0 (off), 1 (always) or 2 (auto). Default is 2.
+\$CompareFB = 1;
+
+\$AllowOverride=desktop,AcceptPointerEvents,SendCutText,AcceptCutText,SendPrimary,SetPrimary,FrameRate
 
 # Increase clipboard size to 100 Mb
 \$MaxCutText = "$((1024 * 1024 * 100))"

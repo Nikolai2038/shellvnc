@@ -227,6 +227,9 @@ shellvnc_connect() {
     )
   fi
 
+  # TODO: Optimize connection
+  # DISPLAY=:1 vncconfig -set FrameRate=30
+
   shellvnc_print_info_increase_prefix "Connecting to VNC server..." || return "$?"
   local vncviewer_return_code=0
   vncviewer "${vnc_args[@]}" "127.0.0.1:${vnc_port}"
