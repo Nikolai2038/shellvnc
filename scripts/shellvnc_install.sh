@@ -253,6 +253,8 @@ Type=Application
 EOF
 
     shellvnc_print_success_decrease_prefix "Creating desktop entry: success!" || return "$?"
+
+    shellvnc_print_warning "Please, restart your display manager (or just reboot) for new desktop entry to be shown." || return "$?"
     # ========================================
 
     shellvnc_print_success_decrease_prefix "Installing server: success!" || return "$?"

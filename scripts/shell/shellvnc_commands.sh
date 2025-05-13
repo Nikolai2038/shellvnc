@@ -76,93 +76,105 @@ shellvnc_commands() {
     # This can differ from OS to OS - this can be broken.
     # Right now I am testing only on Arch.
     # ========================================
+
+    # Even if we can by default consider that the package name is the same as the command name, we don't want to accidentally install wrong package.
+    # And because this solution will has defined number of commands, we can easily add new commands to the list and make it more reliable.
+    local is_implemented=0
+
     local is_aur=0
     local packages_names="${command}"
-    if [ "${command}" = "wl-copy" ]; then
-      packages_names="wl-clipboard"
-    elif [ "${command}" = "man" ]; then
-      packages_names="man-db man-pages"
-    elif [ "${command}" = "genisoimage" ]; then
-      packages_names="cdrtools"
-    elif [ "${command}" = "plasma-activities-cli6" ]; then
-      packages_names="plasma-activities"
-    elif [ "${command}" = "netstat" ]; then
-      packages_names="net-tools"
-    elif [ "${command}" = "_init_completion" ]; then
-      packages_names="bash-completion"
-    elif [ "${command}" = "remote-viewer" ]; then
-      packages_names="virt-viewer"
-    elif [ "${command}" = "vncviewer" ]; then
+    if [ "${command}" = "vncviewer" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
         packages_names="tigervnc"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         packages_names="tigervnc"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         packages_names="tigervnc-viewer"
-      else
-        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+        is_implemented=1
       fi
     elif [ "${command}" = "vncserver" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
         packages_names="tigervnc"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         packages_names="tigervnc-server"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         packages_names="tigervnc-standalone-server"
-      else
-        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+        is_implemented=1
       fi
-    elif [ "${command}" = "telnet" ]; then
-      packages_names="inetutils"
-    elif [ "${command}" = "debtap" ]; then
-      packages_names="debtap"
-      is_aur=1
     elif [ "${command}" = "tput" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_TERMUX}" ]; then
         packages_names="ncurses-utils"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
         packages_names="ncurses"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         packages_names="ncurses"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         packages_names="ncurses-bin"
-      else
-        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+        is_implemented=1
       fi
-    elif [ "${command}" = "pstree" ]; then
-      packages_names="psmisc"
-    elif [ "${command}" = "sshpass" ]; then
-      packages_names="sshpass"
     elif [ "${command}" = "ssh" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
         packages_names="openssh"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         packages_names="openssh-clients"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         packages_names="openssh-client"
-      else
-        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+        is_implemented=1
       fi
     elif [ "${command}" = "pactl" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
         packages_names="libpulse"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         packages_names="pulseaudio-utils"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         packages_names="pulseaudio-utils"
-      else
-        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+        is_implemented=1
       fi
     elif [ "${command}" = "i3" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
         packages_names="i3-wm"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         packages_names="i3"
+        is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         packages_names="i3-wm"
-      else
-        echo "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_CURRENT_OS_NAME}\"!" >&2
+        is_implemented=1
       fi
+    else
+      # Commands which have the same package name for all Linux distributions
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] \
+        || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ] \
+        || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+        if [ "${command}" = "pstree" ]; then
+          packages_names="psmisc"
+          is_implemented=1
+        else
+          local __same_command
+          for __same_command in which sed grep git ssh scp screen sshpass usbip openbox; do
+            if [ "${command}" = "${__same_command}" ]; then
+              packages_names="${__same_command}"
+              is_implemented=1
+            fi
+          done
+        fi
+      fi
+    fi
+
+    if [ "${is_implemented}" = "0" ]; then
+      shellvnc_print_error "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for OS \"${c_highlight}${_SHELLVNC_CURRENT_OS_NAME}${c_return}\"!" || return "$?"
+      return 1
     fi
     # ========================================
 
