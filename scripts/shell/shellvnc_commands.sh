@@ -82,74 +82,95 @@ shellvnc_commands() {
     local is_implemented=0
 
     local is_aur=0
-    local packages_names="${command}"
+
+    # Linux: Required packages for the command;
+    # Windows: URL to download the executable for command.
+    local package_name_or_link="${command}"
+
     if [ "${command}" = "vncviewer" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        packages_names="tigervnc"
+        package_name_or_link="tigervnc"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        packages_names="tigervnc"
+        package_name_or_link="tigervnc"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        packages_names="tigervnc-viewer"
+        package_name_or_link="tigervnc-viewer"
+        is_implemented=1
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+        package_name_or_link="https://sourceforge.net/projects/tigervnc/files/stable/${TIGERVNC_VERSION_FOR_WINDOWS}/vncviewer64-${TIGERVNC_VERSION_FOR_WINDOWS}.exe/download"
+        is_implemented=1
+      fi
+    elif [ "${command}" = "jq" ]; then
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+        package_name_or_link="jq"
+        is_implemented=1
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+        package_name_or_link="jq"
+        is_implemented=1
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+        package_name_or_link="jq"
+        is_implemented=1
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+        package_name_or_link="https://github.com/jqlang/jq/releases/latest/download/jq-win64.exe"
         is_implemented=1
       fi
     elif [ "${command}" = "vncserver" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        packages_names="tigervnc"
+        package_name_or_link="tigervnc"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        packages_names="tigervnc-server"
+        package_name_or_link="tigervnc-server"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        packages_names="tigervnc-standalone-server"
+        package_name_or_link="tigervnc-standalone-server"
         is_implemented=1
       fi
     elif [ "${command}" = "tput" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_TERMUX}" ]; then
-        packages_names="ncurses-utils"
+        package_name_or_link="ncurses-utils"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        packages_names="ncurses"
+        package_name_or_link="ncurses"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        packages_names="ncurses"
+        package_name_or_link="ncurses"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        packages_names="ncurses-bin"
+        package_name_or_link="ncurses-bin"
         is_implemented=1
       fi
     elif [ "${command}" = "ssh" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        packages_names="openssh"
+        package_name_or_link="openssh"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        packages_names="openssh-clients"
+        package_name_or_link="openssh-clients"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        packages_names="openssh-client"
+        package_name_or_link="openssh-client"
         is_implemented=1
       fi
     elif [ "${command}" = "pactl" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        packages_names="libpulse"
+        package_name_or_link="libpulse"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        packages_names="pulseaudio-utils"
+        package_name_or_link="pulseaudio-utils"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        packages_names="pulseaudio-utils"
+        package_name_or_link="pulseaudio-utils"
         is_implemented=1
       fi
     elif [ "${command}" = "i3" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        packages_names="i3-wm"
+        package_name_or_link="i3-wm"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        packages_names="i3"
+        package_name_or_link="i3"
         is_implemented=1
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        packages_names="i3-wm"
+        package_name_or_link="i3-wm"
         is_implemented=1
       fi
     else
@@ -158,13 +179,13 @@ shellvnc_commands() {
         || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ] \
         || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         if [ "${command}" = "pstree" ]; then
-          packages_names="psmisc"
+          package_name_or_link="psmisc"
           is_implemented=1
         else
           local __same_command
           for __same_command in which sed grep git ssh scp screen sshpass usbip openbox; do
             if [ "${command}" = "${__same_command}" ]; then
-              packages_names="${__same_command}"
+              package_name_or_link="${__same_command}"
               is_implemented=1
             fi
           done
@@ -185,17 +206,28 @@ shellvnc_commands() {
     # ========================================
     # Add hint for installing "jq" in Windows
     if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
-      if [ "${command}" = "jq" ]; then
-        command_to_execute="sudo curl -L -o /usr/bin/jq.exe https://github.com/jqlang/jq/releases/latest/download/jq-win64.exe"
+      local executable_path link_path
+
+      executable_path="/usr/bin/${command}.exe" || return "$?"
+      link_path="/usr/bin/${command}" || return "$?"
+
+      if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+        # 1. Download executable file
+        # 2. Create symlink so checks if this command is installed will work now
+        command_to_execute="sudo curl --fail -L -o \"${executable_path}\" \"${package_name_or_link}\" && sudo ln -s \"${executable_path}\" \"${link_path}\"" || return "$?"
+      elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+        # 1. Delete executable file
+        # 2. Remove symlink
+        command_to_execute="sudo rm -rf \"${executable_path}\" && sudo unlink \"${link_path}\"" || return "$?"
       else
-        shellvnc_print_error "Installing command \"${c_highlight}${command}${c_return}\" is not implemented for \"${_SHELLVNC_OS_NAME_WINDOWS}\"!" || return "$?"
+        shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
         return 1
       fi
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_TERMUX}" ]; then
       if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
-        command_to_execute="pkg update && pkg install -y ${packages_names}"
+        command_to_execute="pkg update && pkg install -y ${package_name_or_link}"
       elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
-        command_to_execute="pkg remove -y ${packages_names}"
+        command_to_execute="pkg remove -y ${package_name_or_link}"
       else
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
         return 1
@@ -203,18 +235,18 @@ shellvnc_commands() {
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
       if [ "${is_aur}" = "1" ]; then
         if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
-          command_to_execute="yay --sync --refresh --needed --noconfirm ${packages_names}"
+          command_to_execute="yay --sync --refresh --needed --noconfirm ${package_name_or_link}"
         elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
-          command_to_execute="yay -Runs --noconfirm ${packages_names}"
+          command_to_execute="yay -Runs --noconfirm ${package_name_or_link}"
         else
           shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
           return 1
         fi
       else
         if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
-          command_to_execute="sudo pacman --sync --refresh --needed --noconfirm ${packages_names}"
+          command_to_execute="sudo pacman --sync --refresh --needed --noconfirm ${package_name_or_link}"
         elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
-          command_to_execute="sudo pacman -Runs --noconfirm ${packages_names}"
+          command_to_execute="sudo pacman -Runs --noconfirm ${package_name_or_link}"
         else
           shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
           return 1
@@ -222,18 +254,18 @@ shellvnc_commands() {
       fi
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
       if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
-        command_to_execute="sudo dnf install -y ${packages_names}"
+        command_to_execute="sudo dnf install -y ${package_name_or_link}"
       elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
-        command_to_execute="sudo dnf remove -y ${packages_names}"
+        command_to_execute="sudo dnf remove -y ${package_name_or_link}"
       else
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
         return 1
       fi
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
       if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
-        command_to_execute="sudo apt-get update && sudo apt-get install -y ${packages_names}"
+        command_to_execute="sudo apt-get update && sudo apt-get install -y ${package_name_or_link}"
       elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
-        command_to_execute="sudo apt-get remove -y ${packages_names}"
+        command_to_execute="sudo apt-get remove -y ${package_name_or_link}"
       else
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
         return 1

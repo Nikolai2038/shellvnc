@@ -22,6 +22,56 @@ shellvnc_init_current_os_type_and_name() {
 
     # Convert to lowercase and replace spaces with dashes
     _SHELLVNC_CURRENT_OS_VERSION="$(powershell -command "(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').ProductName" | sed -E 's/[^a-zA-Z0-9]+/-/g' | tr '[:upper:]' '[:lower:]' | sed -E 's/^windows-//')" || return "$?"
+
+    # ========================================
+    # Imitate "sudo" command for Windows
+    # ========================================
+    if [ "${_N2038_CURRENT_OS_TYPE}" = "${_N2038_OS_TYPE_WINDOWS}" ]; then
+      # shellcheck disable=SC2317
+      sudo() {
+        local shellvnc_temp_file shellvnc_arg shellvnc_arg_escaped
+
+        shellvnc_temp_file="$(mktemp --suffix ".sh")" || return "$?"
+        echo "temp file: ${shellvnc_temp_file}"
+
+        echo "return_code=0" >> "${shellvnc_temp_file}" || return "$?"
+        while [ "$#" -gt 0 ]; do
+          shellvnc_arg="$1" && shift
+          shellvnc_arg_escaped="${shellvnc_arg//\\/\\\\}" || return "$?"
+          shellvnc_arg_escaped="${shellvnc_arg_escaped//\"/\\\"}" || return "$?"
+          shellvnc_arg_escaped="${shellvnc_arg_escaped//\$/\\\$}" || return "$?"
+          echo -n "\"${shellvnc_arg_escaped}\" " >> "${shellvnc_temp_file}" || return "$?"
+        done
+        echo " || { return_code=\"\$?\" && read -p 'Error with return code \${return_code} occurred! Press any key to continue...' -n 1 -s -r; }" >> "${shellvnc_temp_file}" || return "$?"
+
+        # Clear buffer (this helps for special keys like arrows)
+        echo "while read -t 0.1 -n 1 -r; do :; done" >> "${shellvnc_temp_file}" || return "$?"
+        echo "echo ''" >> "${shellvnc_temp_file}" || return "$?"
+
+        # Remove temp file
+        echo "rm \"${shellvnc_temp_file}\"" >> "${shellvnc_temp_file}" || return "$?"
+        echo "exit \${return_code}" >> "${shellvnc_temp_file}" || return "$?"
+
+        echo "========================================"
+        cat "${shellvnc_temp_file}" || return "$?"
+        echo "========================================"
+
+        # TODO: Find cause: For some reason, with '--noprofile', '--norc' it will freeze (and then, executing by hand will be okay).
+        powershell.exe -Command "Start-Process -FilePath 'C:\Program Files\Git\git-bash.exe' -Verb RunAs -ArgumentList '${shellvnc_temp_file}'" || return "$?"
+
+        # Wait for the temp file to be removed - this will happen when the command is finished
+        while [ -f "${shellvnc_temp_file}" ]; do
+          sleep 1
+        done
+
+        return 0
+      }
+      # Export function, if we are in Bash. This way, MINGW will be able to see main functions when executing files.
+      # Also, in "dash" if error encountered while sourcing, sourcing will be stoped - so we explicitly check if we are in Bash here.
+      # shellcheck disable=SC3045
+      [ -n "${BASH_VERSION}" ] && export -f sudo 2> /dev/null
+    fi
+    # ========================================
   elif [ "${current_kernel_name}" = "Linux" ]; then
     _SHELLVNC_CURRENT_OS_TYPE="${_SHELLVNC_OS_TYPE_LINUX}"
 
