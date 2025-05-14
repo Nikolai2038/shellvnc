@@ -38,12 +38,18 @@ shellvnc_init_current_os_type_and_name() {
       echo "return_code=0" >> "${shellvnc_temp_file}" || return "$?"
       while [ "$#" -gt 0 ]; do
         shellvnc_arg="$1" && shift
+
+        if [ "${shellvnc_arg}" = ">" ] || [ "${shellvnc_arg}" = ">>" ]; then
+          echo -n "${shellvnc_arg} " >> "${shellvnc_temp_file}" || return "$?"
+          continue
+        fi
+
         shellvnc_arg_escaped="${shellvnc_arg//\\/\\\\}" || return "$?"
         shellvnc_arg_escaped="${shellvnc_arg_escaped//\"/\\\"}" || return "$?"
         shellvnc_arg_escaped="${shellvnc_arg_escaped//\$/\\\$}" || return "$?"
         echo -n "\"${shellvnc_arg_escaped}\" " >> "${shellvnc_temp_file}" || return "$?"
       done
-      echo " || { return_code=\"\$?\" && read -p 'Error with return code \${return_code} occurred! Press any key to continue...' -n 1 -s -r; }" >> "${shellvnc_temp_file}" || return "$?"
+      echo "|| { return_code=\"\$?\" && read -p 'Error with return code \${return_code} occurred! Press any key to continue...' -n 1 -s -r; }" >> "${shellvnc_temp_file}" || return "$?"
 
       # Save the return code to a file (because PowerShell call for Bash will always return 0)
       shellvnc_return_code_file="${shellvnc_temp_file}.ret"

@@ -59,6 +59,13 @@ shellvnc_commands() {
 
         # shellcheck disable=SC2320
         echo "${command}" >> "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
+
+        # Remove duplicated entries
+        local current_content
+        current_content="$(cat "${SHELLVNC_INSTALLED_COMMANDS_PATH}")" || return "$?"
+        current_content="$(echo "${current_content}" | sort -u)" || return "$?"
+        echo "${current_content}" > "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
+        shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is added to \"${c_highlight}${SHELLVNC_INSTALLED_COMMANDS_PATH}${c_return}\"!" || return "$?"
       fi
     elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
       if type "${command}" > /dev/null 2>&1; then
@@ -81,8 +88,14 @@ shellvnc_commands() {
     # (Only for Arch): If the package need to be installed from AUR (via "yay")
     local is_aur=0
 
-    # (Only for Windows): If the package is an installer (1) or a portable executable (0)
-    local is_windows_installer=0
+    # (Only for Windows):
+    # - 0: portable executable
+    # - 1: installer
+    # - 2: zip archive
+    local windows_file_type=0
+
+    # (Only for Windows, if type is 2): If the package is a zip archive
+    local path_to_exe_inside_zip=""
 
     # Even if we can by default consider that the package name is the same as the command name, we don't want to accidentally install wrong package.
     # And because this solution will has defined number of commands, we can easily add new commands to the list and make it more reliable.
@@ -144,9 +157,13 @@ shellvnc_commands() {
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         package_name_or_link="pulseaudio-utils"
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
-        shellvnc_print_warning "When installer shows up, please remember to enable \"${c_highlight}Allow module loading${c_return}\"!" || return "$?"
-        package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pasetup.exe"
-        is_windows_installer=1
+        # shellvnc_print_warning "When installer shows up, please remember to enable \"${c_highlight}Allow module loading${c_return}\"!" || return "$?"
+        # package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pasetup.exe"
+        # windows_file_type=1
+
+        package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pulseaudio.zip"
+        windows_file_type=2
+        path_to_exe_inside_zip="pulseaudio/bin/pactl.exe"
       fi
     elif [ "${command}" = "i3" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
@@ -187,33 +204,57 @@ shellvnc_commands() {
     # ========================================
     # Add hint for installing "jq" in Windows
     if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
-      local executable_path link_path
+      local executable_path link_path file_name
 
       executable_path="/usr/bin/${command}.exe" || return "$?"
       link_path="/usr/bin/${command}" || return "$?"
+      file_name="$(basename "${executable_path}")" || return "$?"
 
       if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
-        if [ "${is_windows_installer}" = "0" ]; then
-          # 1. Download executable file
-          # 2. Create symlink so checks if this command is installed will work now
-          command_to_execute="sudo curl --fail -L -o \"${executable_path}\" \"${package_name_or_link}\" && sudo ln -sf \"${executable_path}\" \"${link_path}\""
-        else
-          local installer_file_name
-          installer_file_name="$(basename "${executable_path}")" || return "$?"
+        if [ "${windows_file_type}" = "0" ]; then
+          shellvnc_print_text "Installation type: \"${c_highlight}Portable executable${c_return}\"!" || return "$?"
+
+          # Download executable file (symlink will be visible automatically by Git Bash)
+          command_to_execute="sudo curl --fail -L -o \"${executable_path}\" \"${package_name_or_link}\""
+        elif [ "${windows_file_type}" = "1" ]; then
+          shellvnc_print_text "Installation type: \"${c_highlight}Installer${c_return}\"!" || return "$?"
 
           # 1. Download installer
           # 2. Run installer
           # 3. Remove installer
-          command_to_execute="sudo curl --fail -L -o \"${installer_file_name}\" \"${package_name_or_link}\" && ./${installer_file_name} || { error_code=\"\$?\" && rm \"${installer_file_name}\"; shellvnc_print_error \"Error occurred while trying to download and run the installer!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${installer_file_name}\"" || return "$?"
+          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && ./${file_name} || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+        elif [ "${windows_file_type}" = "2" ]; then
+          shellvnc_print_text "Installation type: \"${c_highlight}Zip archive${c_return}\"!" || return "$?"
+
+          # 1. Download zip archive
+          # 2. Unzip it to /usr/lib/${command}
+          # 3. Create symlink so checks if this command is installed will work now
+          # 4. Remove zip archive
+          # NOTE: We must escape ">" here, because it is used inside the call function.
+          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo unzip -o \"${file_name}\" -d \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_zip}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+        else
+          shellvnc_print_error "Unknown file type \"${c_highlight}${windows_file_type}${c_return}\"!" || return "$?"
+          return 1
         fi
       elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
-        if [ "${is_windows_installer}" = "0" ]; then
-          # 1. Delete executable file
-          # 2. Remove symlink
-          command_to_execute="sudo rm -rf \"${executable_path}\" && sudo unlink \"${link_path}\"" || return "$?"
-        else
-          # TODO: Implement uninstallation for Windows
+        if [ "${windows_file_type}" = "0" ]; then
+          shellvnc_print_text "Uninstallation type: \"${c_highlight}Portable executable${c_return}\"!" || return "$?"
+
+          # Delete executable file
+          command_to_execute="sudo rm -rf \"${executable_path}\"" || return "$?"
+        elif [ "${windows_file_type}" = "1" ]; then
+          shellvnc_print_text "Uninstallation type: \"${c_highlight}Installer${c_return}\"!" || return "$?"
+
           shellvnc_print_error "Uninstalling \"${c_highlight}${command}${c_return}\" is not implemented for \"${c_highlight}${_SHELLVNC_CURRENT_OS_NAME}${c_return}\"!" || return "$?"
+          return 1
+        elif [ "${windows_file_type}" = "2" ]; then
+          shellvnc_print_text "Uninstallation type: \"${c_highlight}Zip archive${c_return}\"!" || return "$?"
+
+          # 1. Delete symlink
+          # 2. Delete files
+          command_to_execute="unlink \"${link_path}\" && sudo rm -rf \"/usr/lib/${command}\"" || return "$?"
+        else
+          shellvnc_print_error "Unknown file type \"${c_highlight}${windows_file_type}${c_return}\"!" || return "$?"
           return 1
         fi
       else
