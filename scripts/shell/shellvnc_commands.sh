@@ -61,16 +61,6 @@ shellvnc_commands() {
         continue
       else
         shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is not installed!" || return "$?"
-
-        # shellcheck disable=SC2320
-        echo "${command}" >> "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
-
-        # Remove duplicated entries
-        local current_content
-        current_content="$(cat "${SHELLVNC_INSTALLED_COMMANDS_PATH}")" || return "$?"
-        current_content="$(echo "${current_content}" | sort -u)" || return "$?"
-        echo "${current_content}" > "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
-        shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is added to \"${c_highlight}${SHELLVNC_INSTALLED_COMMANDS_PATH}${c_return}\"!" || return "$?"
       fi
     elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
       if type "${command}" > /dev/null 2>&1; then
@@ -176,7 +166,7 @@ shellvnc_commands() {
           package_name_or_link="psmisc"
         else
           local __same_command
-          for __same_command in which sed grep git ssh scp screen sshpass usbip openbox zstd jq; do
+          for __same_command in which sed grep git ssh scp sshpass usbip openbox zstd jq; do
             if [ "${command}" = "${__same_command}" ]; then
               package_name_or_link="${__same_command}"
             fi
@@ -351,6 +341,20 @@ shellvnc_commands() {
     if [ "${command}" = "debtap" ]; then
       command_to_execute="${command_to_execute} && sudo debtap -u"
     fi
+    # ========================================
+
+    # ========================================
+    # Save information about installed command to be able to remove it when uninstalling
+    # ========================================
+    # shellcheck disable=SC2320
+    echo "${command}" >> "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
+
+    # Remove duplicated entries
+    local current_content
+    current_content="$(cat "${SHELLVNC_INSTALLED_COMMANDS_PATH}")" || return "$?"
+    current_content="$(echo "${current_content}" | sort -u)" || return "$?"
+    echo "${current_content}" > "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
+    shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is added to \"${c_highlight}${SHELLVNC_INSTALLED_COMMANDS_PATH}${c_return}\"!" || return "$?"
     # ========================================
 
     # ========================================

@@ -17,7 +17,7 @@ shellvnc_connect() {
 
   shellvnc_check_requirements || return "$?"
 
-  shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass scp screen usbip || return "$?"
+  shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass scp usbip || return "$?"
 
   if [ "$#" -lt 1 ]; then
     shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <host[:port=22]> [user] [password]${c_return}" || return "$?"
@@ -114,30 +114,38 @@ shellvnc_connect() {
   shellvnc_print_success_decrease_prefix "Getting VNC port from the remote server: success!" || return "$?"
   # ========================================
 
+  local ssh_tunnel_pid_file="/tmp/shellvnc_ssh_tunnel_${user}_${host}_${port}.pid"
+
+  # Terminate SSH forwarding
+  function close_ssh_tunnels() {
+    # Terminate SSH forwarding if it is already running
+    if [ -f "${ssh_tunnel_pid_file}" ] && kill -0 "$(cat "${ssh_tunnel_pid_file}")" 2> /dev/null; then
+      shellvnc_print_info_increase_prefix "Terminate SSH tunnel to forward ports..." || return "$?"
+      kill "$(cat "${ssh_tunnel_pid_file}")" || return "$?"
+      rm -f "${ssh_tunnel_pid_file}" || return "$?"
+      shellvnc_print_success_decrease_prefix "Terminate SSH tunnel to forward ports: success!" || return "$?"
+    fi
+  }
+
+  close_ssh_tunnels || return "$?"
+
   # ========================================
   # Open SSH tunnels
   # ========================================
-  # Name of the screen session
-  local screen_session_name="shellvnc_${user}_on_${host}_port_${port}"
-
-  # Terminate SSH forwarding if it is already running
-  if screen -list | grep --quiet "${screen_session_name}"; then
-    shellvnc_print_info_increase_prefix "Terminate \"screen\" session to forward SSH ports..." || return "$?"
-    # Terminate screen session
-    screen -S "${screen_session_name}" -X quit || return "$?"
-    shellvnc_print_success_decrease_prefix "Terminate \"screen\" session to forward SSH ports: success!" || return "$?"
-  fi
-
   # Passthrough ports via SSH
-  shellvnc_print_info_increase_prefix "Start \"screen\" session to forward SSH ports..." || return "$?"
-  screen -dm -S "${screen_session_name}" \
-    sshpass "-p${password}" \
-    ssh -N \
-    -p "${port}" \
-    "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
-    -L "127.0.0.1:${vnc_port}:127.0.0.1:${vnc_port}" \
-    "${user}@${host}" || return "$?"
-  shellvnc_print_success_decrease_prefix "Start \"screen\" session to forward SSH ports: success!" || return "$?"
+  shellvnc_print_info_increase_prefix "Start SSH tunnel to forward ports..." || return "$?"
+  declare -a ssh_command=(
+    sshpass -p"${password}"
+    ssh -N
+    -p "${port}"
+    "${n2038_extra_args_for_ssh_connections_to_vms[@]}"
+    -L "127.0.0.1:${vnc_port}:127.0.0.1:${vnc_port}"
+    "${user}@${host}"
+  )
+  shellvnc_print_text "Command: ${c_highlight}${ssh_command[*]}${c_return}" || return "$?"
+  "${ssh_command[@]}" &
+  echo $! > "${ssh_tunnel_pid_file}" || return "$?"
+  shellvnc_print_success_decrease_prefix "Start SSH tunnel to forward ports: success!" || return "$?"
 
   # Because we run script in the background, we need to wait for a bit
   shellvnc_print_info_increase_prefix "Waiting for SSH ports to be forwarded..." || return "$?"
@@ -236,21 +244,16 @@ shellvnc_connect() {
 
   shellvnc_print_info_increase_prefix "Connecting to VNC server..." || return "$?"
   local vncviewer_return_code=0
-  vncviewer "${vnc_args[@]}" "127.0.0.1:${vnc_port}"
+  declare -a vncviewer_command=(
+    vncviewer "${vnc_args[@]}" "127.0.0.1:${vnc_port}"
+  )
+  shellvnc_print_text "Command: ${c_highlight}${vncviewer_command[*]}${c_return}" || return "$?"
+  "${vncviewer_command[@]}"
   vncviewer_return_code="$?"
   shellvnc_print_success_decrease_prefix "Connecting to VNC server: done!" || return "$?"
   # ========================================
 
-  # ========================================
-  # Terminate SSH forwarding
-  # ========================================
-  if screen -list | grep --quiet "${screen_session_name}"; then
-    shellvnc_print_info_increase_prefix "Terminate \"screen\" session to forward SSH ports..." || return "$?"
-    # Terminate screen session
-    screen -S "${screen_session_name}" -X quit || return "$?"
-    shellvnc_print_success_decrease_prefix "Terminate \"screen\" session to forward SSH ports: success!" || return "$?"
-  fi
-  # ========================================
+  close_ssh_tunnels || return "$?"
 
   if [ "${vncviewer_return_code}" != "0" ]; then
     shellvnc_print_error_decrease_prefix "Connecting: failed!" || return "$?"
