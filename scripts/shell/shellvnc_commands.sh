@@ -91,7 +91,8 @@ shellvnc_commands() {
     # (Only for Windows):
     # - 0: portable executable
     # - 1: installer
-    # - 2: zip archive
+    # - 2: .zip archive
+    # - 3: .tar.zst archive
     local windows_file_type=0
 
     # (Only for Windows, if type is 2): If the package is a zip archive
@@ -111,17 +112,13 @@ shellvnc_commands() {
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         package_name_or_link="tigervnc-viewer"
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
-        package_name_or_link="https://sourceforge.net/projects/tigervnc/files/stable/${TIGERVNC_VERSION_FOR_WINDOWS}/vncviewer64-${TIGERVNC_VERSION_FOR_WINDOWS}.exe/download"
-      fi
-    elif [ "${command}" = "jq" ]; then
-      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        package_name_or_link="jq"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        package_name_or_link="jq"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        package_name_or_link="jq"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
-        package_name_or_link="https://github.com/jqlang/jq/releases/latest/download/jq-win64.exe"
+        # # Direct download - very slow sometimes
+        # package_name_or_link="https://sourceforge.net/projects/tigervnc/files/stable/${TIGERVNC_VERSION_FOR_WINDOWS}/vncviewer64-${TIGERVNC_VERSION_FOR_WINDOWS}.exe/download"
+
+        # Use mirror
+        package_name_or_link="https://downloads.sourceforge.net/project/tigervnc/stable/${TIGERVNC_VERSION_FOR_WINDOWS}/vncviewer64-${TIGERVNC_VERSION_FOR_WINDOWS}.exe?use_mirror=phoenixnap"
+
+        windows_file_type=0
       fi
     elif [ "${command}" = "vncserver" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
@@ -165,14 +162,6 @@ shellvnc_commands() {
         windows_file_type=2
         path_to_exe_inside_zip="pulseaudio/bin/pactl.exe"
       fi
-    elif [ "${command}" = "i3" ]; then
-      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
-        package_name_or_link="i3-wm"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-        package_name_or_link="i3"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-        package_name_or_link="i3-wm"
-      fi
     else
       # Commands which have the same package name for all Linux distributions
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] \
@@ -182,11 +171,24 @@ shellvnc_commands() {
           package_name_or_link="psmisc"
         else
           local __same_command
-          for __same_command in which sed grep git ssh scp screen sshpass usbip openbox; do
+          for __same_command in which sed grep git ssh scp screen sshpass usbip openbox zstd jq; do
             if [ "${command}" = "${__same_command}" ]; then
               package_name_or_link="${__same_command}"
             fi
           done
+        fi
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+        if [ "${command}" = "sshpass" ]; then
+          package_name_or_link="https://repo.msys2.org/msys/x86_64/sshpass-1.10-1-x86_64.pkg.tar.zst"
+          windows_file_type=3
+          path_to_exe_inside_zip="usr/bin/sshpass.exe"
+        elif [ "${command}" = "zstd" ]; then
+          package_name_or_link="https://github.com/facebook/zstd/releases/download/${ZSTD_VERSION_FOR_WINDOWS}/zstd-${ZSTD_VERSION_FOR_WINDOWS}-win64.zip"
+          windows_file_type=2
+          path_to_exe_inside_zip="zstd-${ZSTD_VERSION_FOR_WINDOWS}-win64/zstd.exe"
+        elif [ "${command}" = "jq" ]; then
+          package_name_or_link="https://github.com/jqlang/jq/releases/latest/download/jq-win64.exe"
+          windows_file_type=0
         fi
       fi
     fi
@@ -208,23 +210,25 @@ shellvnc_commands() {
 
       executable_path="/usr/bin/${command}.exe" || return "$?"
       link_path="/usr/bin/${command}" || return "$?"
-      file_name="$(basename "${executable_path}")" || return "$?"
 
       if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
         if [ "${windows_file_type}" = "0" ]; then
           shellvnc_print_text "Installation type: \"${c_highlight}Portable executable${c_return}\"!" || return "$?"
+          file_name="$(basename "${executable_path}")" || return "$?"
 
           # Download executable file (symlink will be visible automatically by Git Bash)
           command_to_execute="sudo curl --fail -L -o \"${executable_path}\" \"${package_name_or_link}\""
         elif [ "${windows_file_type}" = "1" ]; then
           shellvnc_print_text "Installation type: \"${c_highlight}Installer${c_return}\"!" || return "$?"
+          file_name="$(basename "${executable_path}")" || return "$?"
 
           # 1. Download installer
           # 2. Run installer
           # 3. Remove installer
           command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && ./${file_name} || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
         elif [ "${windows_file_type}" = "2" ]; then
-          shellvnc_print_text "Installation type: \"${c_highlight}Zip archive${c_return}\"!" || return "$?"
+          shellvnc_print_text "Installation type: \"${c_highlight}.zip archive${c_return}\"!" || return "$?"
+          file_name="$(basename "${package_name_or_link}")" || return "$?"
 
           # 1. Download zip archive
           # 2. Unzip it to /usr/lib/${command}
@@ -232,6 +236,18 @@ shellvnc_commands() {
           # 4. Remove zip archive
           # NOTE: We must escape ">" here, because it is used inside the call function.
           command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo unzip -o \"${file_name}\" -d \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_zip}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+        elif [ "${windows_file_type}" = "3" ]; then
+          # Install required "zstd" command to uncompress the archive
+          shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" zstd || return "$?"
+
+          shellvnc_print_text "Installation type: \"${c_highlight}.tar.zst archive${c_return}\"!" || return "$?"
+          file_name="$(basename "${package_name_or_link}")" || return "$?"
+
+          # 1. Download tar.zst archive
+          # 2. Unzip it to /usr/lib/${command}
+          # 3. Create symlink so checks if this command is installed will work now
+          # 4. Remove tar.zst archive
+          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo mkdir --parents \"/usr/lib/${command}\" && sudo tar -xvf \"${file_name}\" -C \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_zip}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
         else
           shellvnc_print_error "Unknown file type \"${c_highlight}${windows_file_type}${c_return}\"!" || return "$?"
           return 1
@@ -248,7 +264,13 @@ shellvnc_commands() {
           shellvnc_print_error "Uninstalling \"${c_highlight}${command}${c_return}\" is not implemented for \"${c_highlight}${_SHELLVNC_CURRENT_OS_NAME}${c_return}\"!" || return "$?"
           return 1
         elif [ "${windows_file_type}" = "2" ]; then
-          shellvnc_print_text "Uninstallation type: \"${c_highlight}Zip archive${c_return}\"!" || return "$?"
+          shellvnc_print_text "Uninstallation type: \"${c_highlight}.zip archive${c_return}\"!" || return "$?"
+
+          # 1. Delete symlink
+          # 2. Delete files
+          command_to_execute="unlink \"${link_path}\" && sudo rm -rf \"/usr/lib/${command}\"" || return "$?"
+        elif [ "${windows_file_type}" = "3" ]; then
+          shellvnc_print_text "Uninstallation type: \"${c_highlight}.tar.zst archive${c_return}\"!" || return "$?"
 
           # 1. Delete symlink
           # 2. Delete files
