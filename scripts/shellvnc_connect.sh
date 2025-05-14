@@ -11,6 +11,183 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null
 . "./shell/shellvnc_check_requirements.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
+# Generate a unique filename to store PID
+_shellvnc_get_pid_file() {
+  local user="$1"
+  local host="$2"
+  local port="$3"
+  local local_port="$4"
+  local remote_port="$5"
+  local direction="$6"
+  echo "/tmp/shellvnc_ssh_${user}_${host}_${port}_${local_port}_${remote_port}_${direction}.pid"
+}
+
+# Template function to establish an SSH tunnel for port forwarding.
+#
+# Usage: _shellvnc_forward_port_via_ssh <user> <host> <port> <local_port> <remote_port> <password> <direction> [<extra_ssh_args>...]
+# Where:
+# - "user": SSH user;
+# - "host": SSH host;
+# - "port": SSH port;
+# - "local_port": Local port to forward;
+# - "remote_port": Remote port to forward;
+# - "password": SSH password;
+# - "direction": SSH direction flag (-L for local forwarding, -R for remote forwarding);
+# - "extra_ssh_args": Additional SSH arguments (optional).
+_shellvnc_forward_port_via_ssh() {
+  local direction="$1" && shift
+  if [ "${direction}" != "-L" ] && [ "${direction}" != "-R" ]; then
+    shellvnc_print_error "Invalid direction \"${c_highlight}${direction}${c_return}\". Use \"${c_highlight}-L${c_return}\" for local forwarding or \"${c_highlight}-R${c_return}\" for remote forwarding." || return "$?"
+    return 1
+  fi
+
+  local user="$1" && shift
+  local host="$1" && shift
+  local port="$1" && shift
+  local local_port="$1" && shift
+  local remote_port="$1" && shift
+  local password="$1" && shift
+
+  local extra_ssh_args=("$@")
+
+  local pid_file
+  pid_file="$(_shellvnc_get_pid_file "$user" "$host" "$port" "$local_port" "$remote_port" "$direction")" || return "$?"
+
+  # Start SSH tunnel
+  shellvnc_print_info_increase_prefix "Start SSH tunnel \"${c_highlight}${direction}${c_return}\" \"${c_highlight}127.0.0.1:${local_port}${c_return}\" <-> \"${c_highlight}127.0.0.1:${remote_port}${c_return}\" (PID is in file \"${c_highlight}${pid_file}${c_return}\")..." || return "$?"
+  sshpass -p"${password}" \
+    ssh -N \
+    -p "${port}" \
+    "${extra_ssh_args[@]}" \
+    "${direction}" "127.0.0.1:${local_port}:127.0.0.1:${remote_port}" \
+    "${user}@${host}" &
+  local ssh_pid=$!
+
+  # On Linux, last process ID will be "sshpass" - all correct.
+  # On Windows (Git Bash), last process ID will be SSH - parent ID. So we need to get the child process ID.
+  if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+    shellvnc_print_text "SSH tunnel PPID: ${c_highlight}${ssh_pid}${c_return}." || return "$?"
+    ssh_pid="$(ps | sed -En "s/^.\s+([0-9]+)\s+${ssh_pid}.*$/\1/p" | head -n 1)" || return "$?"
+  fi
+  shellvnc_print_text "SSH tunnel PID: ${c_highlight}${ssh_pid}${c_return}." || return "$?"
+
+  echo "$ssh_pid" > "$pid_file"
+  shellvnc_print_success_decrease_prefix "Start SSH tunnel \"${c_highlight}${direction}${c_return}\" \"${c_highlight}127.0.0.1:${local_port}${c_return}\" <-> \"${c_highlight}127.0.0.1:${remote_port}${c_return}\" (PID is in file \"${c_highlight}${pid_file}${c_return}\"): success!" || return "$?"
+
+  # Wait for port
+  shellvnc_print_info_increase_prefix "Waiting for port \"${c_highlight}${local_port}${c_return}\" to become ready..." || return "$?"
+  local sleep_time_step=0.1
+  local sleep_time_steps_current=0
+  local sleep_time_steps_max=50
+  while ! timeout 1 bash -c "</dev/tcp/127.0.0.1/${local_port}" &> /dev/null; do
+    sleep "${sleep_time_step}" || return "$?"
+    sleep_time_steps_current=$((sleep_time_steps_current + 1))
+    if [ "${sleep_time_steps_current}" -ge "${sleep_time_steps_max}" ]; then
+      shellvnc_print_error_decrease_prefix "Waiting for port \"${c_highlight}${local_port}${c_return}\" to become ready: failed! Timeout exceeded." || return "$?"
+      return 1
+    fi
+  done
+  shellvnc_print_success_decrease_prefix "Waiting for port \"${c_highlight}${local_port}${c_return}\" to become ready: success!" || return "$?"
+}
+
+# Template function to terminate a running SSH tunnel.
+#
+# Usage: _shellvnc_terminate_ssh_tunnel <user> <host> <port> <local_port> <remote_port> <direction>
+# Where:
+# - "user": SSH user;
+# - "host": SSH host;
+# - "port": SSH port;
+# - "local_port": Local port to forward;
+# - "remote_port": Remote port to forward;
+# - "direction": SSH direction flag (-L for local forwarding, -R for remote forwarding).
+_shellvnc_terminate_ssh_tunnel() {
+  local direction="$1" && shift
+  if [ "${direction}" != "-L" ] && [ "${direction}" != "-R" ]; then
+    shellvnc_print_error "Invalid direction \"${c_highlight}${direction}${c_return}\". Use \"${c_highlight}-L${c_return}\" for local forwarding or \"${c_highlight}-R${c_return}\" for remote forwarding." || return "$?"
+    return 1
+  fi
+
+  local user="$1" && shift
+  local host="$1" && shift
+  local port="$1" && shift
+  local local_port="$1" && shift
+  local remote_port="$1" && shift
+
+  local pid_file
+  pid_file="$(_shellvnc_get_pid_file "$user" "$host" "$port" "$local_port" "$remote_port" "$direction")" || return "$?"
+
+  if [ ! -f "${pid_file}" ]; then
+    return 0
+  fi
+
+  local ssh_tunnel_pid
+  ssh_tunnel_pid="$(< "${pid_file}")" || return "$?"
+
+  shellvnc_print_info_increase_prefix "Terminate SSH tunnel (PID is in file \"${c_highlight}${pid_file}${c_return}\")..." || return "$?"
+  kill -TERM "${ssh_tunnel_pid}" || true
+  shellvnc_print_success_decrease_prefix "Terminate SSH tunnel (PID is  in file \"${c_highlight}${pid_file}${c_return}\"): success!" || return "$?"
+
+  rm -f "${pid_file}" || return "$?"
+}
+
+# Forward local port to remote via SSH (-L).
+#
+# Usage: shellvnc_forward_port_via_ssh_L <user> <host> <port> <local_port> <remote_port> <password> [<extra_ssh_args>...]
+# Where:
+# - "user": SSH user;
+# - "host": SSH host;
+# - "port": SSH port;
+# - "local_port": Local port to forward;
+# - "remote_port": Remote port to forward;
+# - "password": SSH password;
+# - "extra_ssh_args": Additional SSH arguments (optional).
+shellvnc_forward_port_via_ssh_L() {
+  _shellvnc_forward_port_via_ssh -L "$@" || return "$?"
+}
+
+# Forward remote port to local via SSH (-R).
+#
+# Usage: shellvnc_forward_port_via_ssh_R <user> <host> <port> <local_port> <remote_port> <password> [<extra_ssh_args>...]
+# Where:
+# - "user": SSH user;
+# - "host": SSH host;
+# - "port": SSH port;
+# - "local_port": Local port to forward;
+# - "remote_port": Remote port to forward;
+# - "password": SSH password;
+# - "extra_ssh_args": Additional SSH arguments (optional).
+shellvnc_forward_port_via_ssh_R() {
+  _shellvnc_forward_port_via_ssh -R "$@" || return "$?"
+}
+
+# Terminate a local-to-remote SSH port forwarding (-L).
+#
+# Usage: shellvnc_terminate_ssh_tunnel_L <user> <host> <port> <local_port> <remote_port>
+# Where:
+# - "user": SSH user;
+# - "host": SSH host;
+# - "port": SSH port;
+# - "local_port": Local port to forward;
+# - "remote_port": Remote port to forward.
+shellvnc_terminate_ssh_tunnel_L() {
+  _shellvnc_terminate_ssh_tunnel -L "$@" || return "$?"
+}
+
+# Terminate a remote-to-local SSH port forwarding (-R).
+#
+# Usage: shellvnc_terminate_ssh_tunnel_R <user> <host> <port> <local_port> <remote_port>
+# Where:
+# - "user": SSH user;
+# - "host": SSH host;
+# - "port": SSH port;
+# - "local_port": Local port to forward;
+# - "remote_port": Remote port to forward.
+shellvnc_terminate_ssh_tunnel_R() {
+  _shellvnc_terminate_ssh_tunnel -R "$@" || return "$?"
+}
+
+# Connect to a VNC server.
+#
 # Usage: shellvnc_connect <host[:port=22]> [user] [password]
 shellvnc_connect() {
   shellvnc_print_info_increase_prefix "Connecting..." || return "$?"
@@ -114,54 +291,12 @@ shellvnc_connect() {
   shellvnc_print_success_decrease_prefix "Getting VNC port from the remote server: success!" || return "$?"
   # ========================================
 
-  local ssh_tunnel_pid_file="/tmp/shellvnc_ssh_tunnel_${user}_${host}_${port}.pid"
+  # Terminate SSH tunnels
+  shellvnc_terminate_ssh_tunnel_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" || return "$?"
 
-  # Terminate SSH forwarding
-  function close_ssh_tunnels() {
-    # Terminate SSH forwarding if it is already running
-    if [ -f "${ssh_tunnel_pid_file}" ] && kill -0 "$(cat "${ssh_tunnel_pid_file}")" 2> /dev/null; then
-      shellvnc_print_info_increase_prefix "Terminate SSH tunnel to forward ports..." || return "$?"
-      kill "$(cat "${ssh_tunnel_pid_file}")" || return "$?"
-      rm -f "${ssh_tunnel_pid_file}" || return "$?"
-      shellvnc_print_success_decrease_prefix "Terminate SSH tunnel to forward ports: success!" || return "$?"
-    fi
-  }
-
-  close_ssh_tunnels || return "$?"
-
-  # ========================================
   # Open SSH tunnels
-  # ========================================
-  # Passthrough ports via SSH
-  shellvnc_print_info_increase_prefix "Start SSH tunnel to forward ports..." || return "$?"
-  declare -a ssh_command=(
-    sshpass -p"${password}"
-    ssh -N
-    -p "${port}"
-    "${n2038_extra_args_for_ssh_connections_to_vms[@]}"
-    -L "127.0.0.1:${vnc_port}:127.0.0.1:${vnc_port}"
-    "${user}@${host}"
-  )
-  shellvnc_print_text "Command: ${c_highlight}${ssh_command[*]}${c_return}" || return "$?"
-  "${ssh_command[@]}" &
-  echo $! > "${ssh_tunnel_pid_file}" || return "$?"
-  shellvnc_print_success_decrease_prefix "Start SSH tunnel to forward ports: success!" || return "$?"
-
-  # Because we run script in the background, we need to wait for a bit
-  shellvnc_print_info_increase_prefix "Waiting for SSH ports to be forwarded..." || return "$?"
-  local sleep_time_step=0.1
-  local sleep_time_steps_current=0
-  local sleep_time_steps_max=50
-  while ! timeout 1 bash -c "</dev/tcp/127.0.0.1/${vnc_port}" > /dev/null 2>&1; do
-    sleep "${sleep_time_step}" || return "$?"
-    sleep_time_steps_current="$((sleep_time_steps_current + 1))"
-    if [ "${sleep_time_steps_current}" -ge "${sleep_time_steps_max}" ]; then
-      shellvnc_print_error_decrease_prefix "Waiting for SSH ports to be forwarded: failed!" || return "$?"
-      return 1
-    fi
-  done
-  shellvnc_print_success_decrease_prefix "Waiting for SSH ports to be forwarded: success!" || return "$?"
-  # ========================================
+  shellvnc_forward_port_via_ssh_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" "${password}" \
+    "${n2038_extra_args_for_ssh_connections_to_vms[@]}" || return "$?"
 
   # ========================================
   # Connect to VNC server
@@ -252,7 +387,8 @@ shellvnc_connect() {
   shellvnc_print_success_decrease_prefix "Connecting to VNC server: done!" || return "$?"
   # ========================================
 
-  close_ssh_tunnels || return "$?"
+  # Terminate SSH tunnels
+  shellvnc_terminate_ssh_tunnel_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" || return "$?"
 
   if [ "${vncviewer_return_code}" != "0" ]; then
     shellvnc_print_error_decrease_prefix "Connecting: failed!" || return "$?"
