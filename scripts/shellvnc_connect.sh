@@ -176,7 +176,6 @@ shellvnc_connect() {
     -ViewOnly=0
 
     -AcceptClipboard=1
-    -SendPrimary=1
 
     # Because we use SSH tunnels, we do not need to use IPv6
     -UseIPv6=0
