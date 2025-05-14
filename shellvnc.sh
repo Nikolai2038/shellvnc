@@ -5,7 +5,7 @@ set -o pipefail
 
 # Path to the directory with the main script
 export SHELLVNC_PATH=""
-SHELLVNC_PATH="$(dirname "$0")" || return "$?" 2> /dev/null || exit "$?"
+SHELLVNC_PATH="$(dirname "${BASH_SOURCE[0]}")" || return "$?" 2> /dev/null || exit "$?"
 
 # ========================================
 # Settings
@@ -71,7 +71,7 @@ shellvnc_return_0_if_already_sourced() {
 export -f shellvnc_return_0_if_already_sourced
 
 export _SHELLVNC_PATH_TO_THIS_SCRIPT_NUMBER=0
-export _SHELLVNC_FILE_IS_SOURCED_PREFIX="_SHELLVNC_FILE_IS_SOURCED_WITH_HASH_"
+export _SHELLVNC_FILE_IS_SOURCED_INDENT="_SHELLVNC_FILE_IS_SOURCED_WITH_HASH_"
 
 # Required steps before imports.
 #
@@ -86,7 +86,7 @@ shellvnc_required_before_imports() {
   # We check both script path and it's contents
   __shellvnc_script_file_hash="$(sha256sum "${bash_source}" | cut -d ' ' -f 1)" || return "$?"
 
-  __shellvnc_script_file_is_sourced_variable_name="${_SHELLVNC_FILE_IS_SOURCED_PREFIX}${__shellvnc_script_file_hash}"
+  __shellvnc_script_file_is_sourced_variable_name="${_SHELLVNC_FILE_IS_SOURCED_INDENT}${__shellvnc_script_file_hash}"
   __shellvnc_current_file_is_sourced="$(eval "echo \"\${${__shellvnc_script_file_is_sourced_variable_name}}\"")" || return "$?"
 
   # Check if the file is already sourced

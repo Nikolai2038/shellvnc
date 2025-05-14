@@ -6,7 +6,7 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null
 . "./_constants.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
-export _SHELLVNC_MESSAGE_PREFIX_LENGTH=0
+export _SHELLVNC_MESSAGE_INDENT_LENGTH=0
 
 # Print a colored text.
 #
@@ -25,16 +25,15 @@ shellvnc_print_color_message() {
   else
     text="$(echo "${text}" | sed -E "s/${c_return}//g")" || return "$?"
   fi
-  text="${main_color}${text}${c_reset}"
 
-  local prefix=""
-  if [ "${_SHELLVNC_MESSAGE_PREFIX_LENGTH}" != "0" ]; then
-    local prefix_length="$((_SHELLVNC_MESSAGE_PREFIX_LENGTH * SHELLVNC_MESSAGE_PREFIX_SCALE))" || return "$?"
-    prefix="$(eval "printf '%.s ' {1..${prefix_length}}")" || return "$?"
+  local indent=""
+  if [ "${_SHELLVNC_MESSAGE_INDENT_LENGTH}" != "0" ]; then
+    local indent_length="$((_SHELLVNC_MESSAGE_INDENT_LENGTH * SHELLVNC_MESSAGE_INDENT_SCALE))" || return "$?"
+    indent="$(eval "printf '%.s ' {1..${indent_length}}")" || return "$?"
   fi
 
-  # shellcheck disable=SC2320,SC3037
-  echo -e "$@" "SHELLVNC: ${prefix}${text}" || return "$?"
+  # Add prefix
+  echo -e "$@" "${text}" | sed -E "s/^(.*)\$/SHELLVNC: ${main_color}${indent}\1${c_reset}/" || return "$?"
 
   return 0
 }

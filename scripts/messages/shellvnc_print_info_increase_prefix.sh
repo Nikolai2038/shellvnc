@@ -12,7 +12,7 @@ shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null 
 # Usage: shellvnc_print_info_increase_prefix [text]
 shellvnc_print_info_increase_prefix() {
   shellvnc_print_info "$@" || return "$?"
-  ((_SHELLVNC_MESSAGE_PREFIX_LENGTH++))
+  ((_SHELLVNC_MESSAGE_INDENT_LENGTH++))
   return 0
 }
 

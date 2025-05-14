@@ -11,7 +11,7 @@ shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null 
 #
 # Usage: shellvnc_print_error_decrease_prefix [text]
 shellvnc_print_error_decrease_prefix() {
-  ((_SHELLVNC_MESSAGE_PREFIX_LENGTH--))
+  ((_SHELLVNC_MESSAGE_INDENT_LENGTH--))
   shellvnc_print_error "$@" || return "$?"
   return 0
 }
