@@ -17,7 +17,7 @@ shellvnc_connect() {
 
   shellvnc_check_requirements || return "$?"
 
-  shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass scp screen usbip || return "$?"
+  shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass scp screen usbip || return "$?"
 
   if [ "$#" -lt 1 ]; then
     shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <host[:port=22]> [user] [password]${c_return}" || return "$?"

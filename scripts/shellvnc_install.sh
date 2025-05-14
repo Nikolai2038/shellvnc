@@ -37,7 +37,7 @@ shellvnc_install() {
       return 1
     fi
 
-    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver openbox || return "$?"
+    shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip vncserver openbox || return "$?"
 
     local vnc_password_for_current_user
     vnc_password_for_current_user="$(shellvnc_generate_password 8)" || return "$?"
@@ -263,7 +263,7 @@ EOF
   if [ "${type}" = "client" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Installing client..." || return "$?"
 
-    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip || return "$?"
+    shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip || return "$?"
 
     shellvnc_print_success_decrease_prefix "Installing client: success!" || return "$?"
   fi

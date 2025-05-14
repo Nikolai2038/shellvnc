@@ -95,7 +95,7 @@ shellvnc_uninstall() {
     # shellcheck disable=SC2207
     commands_to_uninstall=($(cat "${SHELLVNC_INSTALLED_COMMANDS_PATH}")) || return "$?"
 
-    shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" "${commands_to_uninstall[@]}" || return "$?"
+    shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" "${commands_to_uninstall[@]}" || return "$?"
     rm "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
   else
     shellvnc_print_text "All commands were already installed before \"${c_highlight}shellvnc${c_return}\" installation - none will be uninstalled." || return "$?"

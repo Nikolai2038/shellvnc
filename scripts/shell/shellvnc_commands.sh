@@ -11,8 +11,13 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null
 . "../messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
-SHELLVNC_COMMANDS_ACTION_INSTALL="install"
-SHELLVNC_COMMANDS_ACTION_UNINSTALL="uninstall"
+_SHELLVNC_COMMANDS_ACTION_INSTALL="install"
+_SHELLVNC_COMMANDS_ACTION_UNINSTALL="uninstall"
+
+_SHELLVNC_WINDOWS_FILE_TYPE_PORTABLE_EXECUTABLE=0
+_SHELLVNC_WINDOWS_FILE_TYPE_INSTALLER=1
+_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE=2
+_SHELLVNC_WINDOWS_FILE_TYPE_TAR_ZST_ARCHIVE=3
 
 # Installs or removes packages for specified commands.
 # Returns 0 if all the commands are installed, otherwise returns other values.
@@ -20,7 +25,7 @@ SHELLVNC_COMMANDS_ACTION_UNINSTALL="uninstall"
 # Usage: shellvnc_commands <action> <command...>
 shellvnc_commands() {
   if [ "$#" -lt 2 ]; then
-    shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <${SHELLVNC_COMMANDS_ACTION_INSTALL}|${SHELLVNC_COMMANDS_ACTION_UNINSTALL}> <command...>${c_return}" || return "$?"
+    shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <${_SHELLVNC_COMMANDS_ACTION_INSTALL}|${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}> <command...>${c_return}" || return "$?"
     return 1
   fi
 
@@ -28,10 +33,10 @@ shellvnc_commands() {
 
   local action_word_1
   local action_word_2
-  if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+  if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
     action_word_1="Installing"
     action_word_2="install"
-  elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+  elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
     action_word_1="Uninstalling"
     action_word_2="uninstall"
   else
@@ -50,7 +55,7 @@ shellvnc_commands() {
   while [ "$#" -gt 0 ]; do
     local command="$1" && shift
 
-    if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+    if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
       if type "${command}" > /dev/null 2>&1; then
         shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is installed! Skipping!" || return "$?"
         continue
@@ -67,7 +72,7 @@ shellvnc_commands() {
         echo "${current_content}" > "${SHELLVNC_INSTALLED_COMMANDS_PATH}" || return "$?"
         shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is added to \"${c_highlight}${SHELLVNC_INSTALLED_COMMANDS_PATH}${c_return}\"!" || return "$?"
       fi
-    elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+    elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
       if type "${command}" > /dev/null 2>&1; then
         shellvnc_print_text "Command \"${c_highlight}${command}${c_return}\" is installed!" || return "$?"
       else
@@ -96,7 +101,7 @@ shellvnc_commands() {
     local windows_file_type=0
 
     # (Only for Windows, if type is 2): If the package is a zip archive
-    local path_to_exe_inside_zip=""
+    local path_to_exe_inside_archive=""
 
     # Even if we can by default consider that the package name is the same as the command name, we don't want to accidentally install wrong package.
     # And because this solution will has defined number of commands, we can easily add new commands to the list and make it more reliable.
@@ -118,7 +123,7 @@ shellvnc_commands() {
         # Use mirror
         package_name_or_link="https://downloads.sourceforge.net/project/tigervnc/stable/${TIGERVNC_VERSION_FOR_WINDOWS}/vncviewer64-${TIGERVNC_VERSION_FOR_WINDOWS}.exe?use_mirror=phoenixnap"
 
-        windows_file_type=0
+        windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_PORTABLE_EXECUTABLE}"
       fi
     elif [ "${command}" = "vncserver" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
@@ -159,8 +164,8 @@ shellvnc_commands() {
         # windows_file_type=1
 
         package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pulseaudio.zip"
-        windows_file_type=2
-        path_to_exe_inside_zip="pulseaudio/bin/pactl.exe"
+        windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}"
+        path_to_exe_inside_archive="pulseaudio/bin/pactl.exe"
       fi
     else
       # Commands which have the same package name for all Linux distributions
@@ -180,15 +185,19 @@ shellvnc_commands() {
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
         if [ "${command}" = "sshpass" ]; then
           package_name_or_link="https://repo.msys2.org/msys/x86_64/sshpass-1.10-1-x86_64.pkg.tar.zst"
-          windows_file_type=3
-          path_to_exe_inside_zip="usr/bin/sshpass.exe"
+          windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_TAR_ZST_ARCHIVE}"
+          path_to_exe_inside_archive="usr/bin/sshpass.exe"
         elif [ "${command}" = "zstd" ]; then
           package_name_or_link="https://github.com/facebook/zstd/releases/download/${ZSTD_VERSION_FOR_WINDOWS}/zstd-${ZSTD_VERSION_FOR_WINDOWS}-win64.zip"
-          windows_file_type=2
-          path_to_exe_inside_zip="zstd-${ZSTD_VERSION_FOR_WINDOWS}-win64/zstd.exe"
+          windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}"
+          path_to_exe_inside_archive="zstd-${ZSTD_VERSION_FOR_WINDOWS}-win64/zstd.exe"
         elif [ "${command}" = "jq" ]; then
           package_name_or_link="https://github.com/jqlang/jq/releases/latest/download/jq-win64.exe"
-          windows_file_type=0
+          windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_PORTABLE_EXECUTABLE}"
+        elif [ "${command}" = "usbip" ]; then
+          package_name_or_link="https://github.com/cezanne/usbip-win/releases/download/v${USBIP_VERSION_FOR_WINDOWS}/usbip-win-${USBIP_VERSION_FOR_WINDOWS}.zip"
+          windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}"
+          path_to_exe_inside_archive="usbip.exe"
         fi
       fi
     fi
@@ -211,14 +220,14 @@ shellvnc_commands() {
       executable_path="/usr/bin/${command}.exe" || return "$?"
       link_path="/usr/bin/${command}" || return "$?"
 
-      if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
-        if [ "${windows_file_type}" = "0" ]; then
+      if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+        if [ "${windows_file_type}" = "${_SHELLVNC_WINDOWS_FILE_TYPE_PORTABLE_EXECUTABLE}" ]; then
           shellvnc_print_text "Installation type: \"${c_highlight}Portable executable${c_return}\"!" || return "$?"
           file_name="$(basename "${executable_path}")" || return "$?"
 
           # Download executable file (symlink will be visible automatically by Git Bash)
           command_to_execute="sudo curl --fail -L -o \"${executable_path}\" \"${package_name_or_link}\""
-        elif [ "${windows_file_type}" = "1" ]; then
+        elif [ "${windows_file_type}" = "${_SHELLVNC_WINDOWS_FILE_TYPE_INSTALLER}" ]; then
           shellvnc_print_text "Installation type: \"${c_highlight}Installer${c_return}\"!" || return "$?"
           file_name="$(basename "${executable_path}")" || return "$?"
 
@@ -226,7 +235,7 @@ shellvnc_commands() {
           # 2. Run installer
           # 3. Remove installer
           command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && ./${file_name} || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
-        elif [ "${windows_file_type}" = "2" ]; then
+        elif [ "${windows_file_type}" = "${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}" ]; then
           shellvnc_print_text "Installation type: \"${c_highlight}.zip archive${c_return}\"!" || return "$?"
           file_name="$(basename "${package_name_or_link}")" || return "$?"
 
@@ -235,10 +244,10 @@ shellvnc_commands() {
           # 3. Create symlink so checks if this command is installed will work now
           # 4. Remove zip archive
           # NOTE: We must escape ">" here, because it is used inside the call function.
-          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo unzip -o \"${file_name}\" -d \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_zip}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
-        elif [ "${windows_file_type}" = "3" ]; then
+          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo unzip -o \"${file_name}\" -d \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_archive}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+        elif [ "${windows_file_type}" = "${_SHELLVNC_WINDOWS_FILE_TYPE_TAR_ZST_ARCHIVE}" ]; then
           # Install required "zstd" command to uncompress the archive
-          shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" zstd || return "$?"
+          shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" zstd || return "$?"
 
           shellvnc_print_text "Installation type: \"${c_highlight}.tar.zst archive${c_return}\"!" || return "$?"
           file_name="$(basename "${package_name_or_link}")" || return "$?"
@@ -247,12 +256,12 @@ shellvnc_commands() {
           # 2. Unzip it to /usr/lib/${command}
           # 3. Create symlink so checks if this command is installed will work now
           # 4. Remove tar.zst archive
-          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo mkdir --parents \"/usr/lib/${command}\" && sudo tar -xvf \"${file_name}\" -C \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_zip}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo mkdir --parents \"/usr/lib/${command}\" && sudo tar -xvf \"${file_name}\" -C \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_archive}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
         else
           shellvnc_print_error "Unknown file type \"${c_highlight}${windows_file_type}${c_return}\"!" || return "$?"
           return 1
         fi
-      elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+      elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
         if [ "${windows_file_type}" = "0" ]; then
           shellvnc_print_text "Uninstallation type: \"${c_highlight}Portable executable${c_return}\"!" || return "$?"
 
@@ -284,9 +293,9 @@ shellvnc_commands() {
         return 1
       fi
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_TERMUX}" ]; then
-      if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+      if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
         command_to_execute="pkg update && pkg install -y ${package_name_or_link}"
-      elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+      elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
         command_to_execute="pkg remove -y ${package_name_or_link}"
       else
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
@@ -294,18 +303,18 @@ shellvnc_commands() {
       fi
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
       if [ "${is_aur}" = "1" ]; then
-        if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+        if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
           command_to_execute="yay --sync --refresh --needed --noconfirm ${package_name_or_link}"
-        elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+        elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
           command_to_execute="yay -Runs --noconfirm ${package_name_or_link}"
         else
           shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
           return 1
         fi
       else
-        if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+        if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
           command_to_execute="sudo pacman --sync --refresh --needed --noconfirm ${package_name_or_link}"
-        elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+        elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
           command_to_execute="sudo pacman -Runs --noconfirm ${package_name_or_link}"
         else
           shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
@@ -313,18 +322,18 @@ shellvnc_commands() {
         fi
       fi
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
-      if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+      if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
         command_to_execute="sudo dnf install -y ${package_name_or_link}"
-      elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+      elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
         command_to_execute="sudo dnf remove -y ${package_name_or_link}"
       else
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
         return 1
       fi
     elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
-      if [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
+      if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
         command_to_execute="sudo apt-get update && sudo apt-get install -y ${package_name_or_link}"
-      elif [ "${action}" = "${SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
+      elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
         command_to_execute="sudo apt-get remove -y ${package_name_or_link}"
       else
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"

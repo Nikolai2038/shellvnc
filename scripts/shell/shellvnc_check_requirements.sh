@@ -12,7 +12,7 @@ shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null 
 shellvnc_check_requirements() {
   shellvnc_print_info_increase_prefix "Checking requirements..." || return "$?"
 
-  shellvnc_commands "${SHELLVNC_COMMANDS_ACTION_INSTALL}" which sha256sum sed grep git mktemp || return "$?"
+  shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" which sha256sum sed grep git mktemp || return "$?"
 
   shellvnc_print_success_decrease_prefix "Checking requirements: success!" || return "$?"
 }
