@@ -30,38 +30,39 @@ shellvnc_init_current_os_type_and_name() {
       local shellvnc_temp_file shellvnc_arg shellvnc_arg_escaped
 
       # ========================================
-      # Create temp file
+      # Create temp file.
+      # NOTE: We add spaces before each command to not save them in Bash history (Windows)
       # ========================================
       shellvnc_temp_file="$(mktemp --suffix ".sh")" || return "$?"
       shellvnc_print_info_increase_prefix "Creating temp file \"${c_highlight}${shellvnc_temp_file}${c_return}\"..." || return "$?"
 
-      echo "return_code=0" >> "${shellvnc_temp_file}" || return "$?"
+      echo " return_code=0" >> "${shellvnc_temp_file}" || return "$?"
       while [ "$#" -gt 0 ]; do
         shellvnc_arg="$1" && shift
 
         if [ "${shellvnc_arg}" = ">" ] || [ "${shellvnc_arg}" = ">>" ]; then
-          echo -n "${shellvnc_arg} " >> "${shellvnc_temp_file}" || return "$?"
+          echo -n " ${shellvnc_arg}" >> "${shellvnc_temp_file}" || return "$?"
           continue
         fi
 
         shellvnc_arg_escaped="${shellvnc_arg//\\/\\\\}" || return "$?"
         shellvnc_arg_escaped="${shellvnc_arg_escaped//\"/\\\"}" || return "$?"
         shellvnc_arg_escaped="${shellvnc_arg_escaped//\$/\\\$}" || return "$?"
-        echo -n "\"${shellvnc_arg_escaped}\" " >> "${shellvnc_temp_file}" || return "$?"
+        echo -n " \"${shellvnc_arg_escaped}\"" >> "${shellvnc_temp_file}" || return "$?"
       done
-      echo "|| { return_code=\"\$?\" && read -p 'Error with return code \${return_code} occurred! Press any key to continue...' -n 1 -s -r; }" >> "${shellvnc_temp_file}" || return "$?"
+      echo " || { return_code=\"\$?\" && read -p 'Error with return code \${return_code} occurred! Press any key to continue...' -n 1 -s -r; }" >> "${shellvnc_temp_file}" || return "$?"
 
       # Save the return code to a file (because PowerShell call for Bash will always return 0)
       shellvnc_return_code_file="${shellvnc_temp_file}.ret"
-      echo "echo \${return_code} > \"${shellvnc_return_code_file}\"" >> "${shellvnc_temp_file}" || return "$?"
+      echo " echo \${return_code} > \"${shellvnc_return_code_file}\"" >> "${shellvnc_temp_file}" || return "$?"
 
       # Clear buffer (this helps for special keys like arrows)
-      echo "while read -t 0.1 -n 1 -r; do :; done" >> "${shellvnc_temp_file}" || return "$?"
-      echo "echo ''" >> "${shellvnc_temp_file}" || return "$?"
+      echo " while read -t 0.1 -n 1 -r; do :; done" >> "${shellvnc_temp_file}" || return "$?"
+      echo " echo ''" >> "${shellvnc_temp_file}" || return "$?"
 
       # Remove temp file
-      echo "rm \"${shellvnc_temp_file}\"" >> "${shellvnc_temp_file}" || return "$?"
-      echo "exit \${return_code}" >> "${shellvnc_temp_file}" || return "$?"
+      echo " rm \"${shellvnc_temp_file}\"" >> "${shellvnc_temp_file}" || return "$?"
+      echo " exit \${return_code}" >> "${shellvnc_temp_file}" || return "$?"
 
       shellvnc_print_text "========================================" || return "$?"
       shellvnc_print_text "File contents:" || return "$?"
