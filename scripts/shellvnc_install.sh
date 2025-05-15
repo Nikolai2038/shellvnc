@@ -172,6 +172,9 @@ EOF
 
     # This code must be in Bourne Shell syntax on Debian-based systems.
     cat << EOF | sudo tee /etc/xdg/openbox/autostart > /dev/null || return "$?"
+# Unload PulseAudio if previously loaded when connected remotely
+pactl unload-module module-tunnel-sink || true
+
 vnc_args='
   -PasswordFile="${path_to_vnc_password}"
 
@@ -218,7 +221,7 @@ vnc_args='
   -FullScreen
   -FullScreenMode=All
   -FullscreenSystemKeys
-'
+' || true
 
 if [ "${SHELLVNC_IS_DEVELOPMENT}" = "1" ]; then
   vnc_args="\${vnc_args}"'
@@ -233,10 +236,10 @@ else
 fi
 
 # Remove comments and empty lines
-vnc_args="\$(echo "\${vnc_args}" | sed -En 's/^[[:space:]]*([^#[:space:]].+)\$/\1/p' | tr '\n' ' ')"
+vnc_args="\$(echo "\${vnc_args}" | sed -En 's/^[[:space:]]*([^#[:space:]].+)\$/\1/p' | tr '\n' ' ')" || true
 
-echo "vncviewer \${vnc_args} \"127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")\""
-eval "vncviewer \${vnc_args} \"127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")\""
+echo "vncviewer \${vnc_args} \"127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")\"" || true
+eval "vncviewer \${vnc_args} \"127.0.0.1:\$(cat "${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}")\"" || true
 
 openbox --exit
 EOF

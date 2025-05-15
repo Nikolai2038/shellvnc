@@ -164,7 +164,7 @@ shellvnc_commands() {
         windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_INSTALLER}"
 
         # NOTE: For arguments, see https://pgaskin.net/pulseaudio-win32/#readme
-        installer_args="/SILENT /COMPONENTS=pulseaudio,documentation,service,uninstall /TASKS=firewall/allowalledge,csvcmodload"
+        installer_args="/SILENT /COMPONENTS=pulseaudio,documentation,service,uninstall /TASKS=firewall/deny,svcmodload"
         installed_exe_path='C:\Program Files (x86)\PulseAudio\bin\pactl.exe'
         uninstaller_path="C:\Program Files (x86)\PulseAudio\unins000.exe"
         uninstaller_args="/SILENT"
@@ -255,7 +255,7 @@ shellvnc_commands() {
           # 3. Create symlink so checks if this command is installed will work now
           # 4. Remove zip archive
           # NOTE: We must escape ">" here, because it is used inside the call function.
-          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo unzip -o \"${file_name}\" -d \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_archive}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+          command_to_execute="curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo unzip -o \"${file_name}\" -d \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_archive}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
         elif [ "${windows_file_type}" = "${_SHELLVNC_WINDOWS_FILE_TYPE_TAR_ZST_ARCHIVE}" ]; then
           # Install required "zstd" command to uncompress the archive
           shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" zstd || return "$?"
@@ -267,7 +267,7 @@ shellvnc_commands() {
           # 2. Unzip it to /usr/lib/${command}
           # 3. Create symlink so checks if this command is installed will work now
           # 4. Remove tar.zst archive
-          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo mkdir --parents \"/usr/lib/${command}\" && sudo tar -xvf \"${file_name}\" -C \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_archive}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+          command_to_execute="curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && sudo mkdir --parents \"/usr/lib/${command}\" && sudo tar -xvf \"${file_name}\" -C \"/usr/lib/${command}\" && sudo echo \"\\\"/usr/lib/${command}/${path_to_exe_inside_archive}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
         else
           shellvnc_print_error "Unknown file type \"${c_highlight}${windows_file_type}${c_return}\"!" || return "$?"
           return 1
