@@ -291,6 +291,66 @@ shellvnc_connect() {
   shellvnc_print_success_decrease_prefix "Getting VNC port from the remote server: success!" || return "$?"
   # ========================================
 
+  # shellcheck disable=SC2317
+  function close_all_ssh_tunnels() {
+    # Close PulseAudio tunnel
+    shellvnc_terminate_ssh_tunnel_R "${user}" "${host}" "${port}" "${pulseaudio_port_client}" "${pulseaudio_port_server}" || return "$?"
+
+    # TODO: Close USBIP tunnel
+    # ...
+
+    # Close VNC tunnel
+    shellvnc_terminate_ssh_tunnel_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" || return "$?"
+
+    # Clear return handler
+    trap - RETURN || return "$?"
+  }
+  # Add return handler
+  trap "close_all_ssh_tunnels; trap - RETURN" RETURN || return "$?"
+
+  # # ========================================
+  # # PulseAudio
+  # # ========================================
+  # shellvnc_print_info_increase_prefix "Starting PulseAudio server..." || return "$?"
+
+  # local pulseaudio_port_server=4715
+  # local pulseaudio_port_client=4714
+
+  # # Start PulseAudio server
+  # sshpass "-p${password}" \
+  #   ssh \
+  #   -p "${port}" \
+  #   "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
+  #   "${user}@${host}" \
+  #   "pactl load-module module-native-protocol-tcp port=${pulseaudio_port_server} listen=127.0.0.1" || return "$?"
+
+  # # Check if PulseAudio server is running
+  # sshpass "-p${password}" \
+  #   ssh \
+  #   -p "${port}" \
+  #   "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
+  #   "${user}@${host}" \
+  #   "PULSE_SERVER=tcp:127.0.0.1:${pulseaudio_port_server} pactl info" || return "$?"
+
+  # shellvnc_print_success_decrease_prefix "Starting PulseAudio server: success!" || return "$?"
+
+  # # Terminate SSH tunnels
+  # shellvnc_terminate_ssh_tunnel_R "${user}" "${host}" "${port}" "${pulseaudio_port_client}" "${pulseaudio_port_server}" || return "$?"
+
+  # # Open SSH tunnels
+  # shellvnc_forward_port_via_ssh_R "${user}" "${host}" "${port}" "${pulseaudio_port_client}" "${pulseaudio_port_server}" "${password}" \
+  #   "${n2038_extra_args_for_ssh_connections_to_vms[@]}" || return "$?"
+  # # ========================================
+
+  # ========================================
+  # TODO: USBIP
+  # ========================================
+  # ...
+  # ========================================
+
+  # ========================================
+  # VNC
+  # ========================================
   # Terminate SSH tunnels
   shellvnc_terminate_ssh_tunnel_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" || return "$?"
 
@@ -298,9 +358,6 @@ shellvnc_connect() {
   shellvnc_forward_port_via_ssh_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" "${password}" \
     "${n2038_extra_args_for_ssh_connections_to_vms[@]}" || return "$?"
 
-  # ========================================
-  # Connect to VNC server
-  # ========================================
   declare -a vnc_args=(
     -PasswordFile="${path_to_vnc_password_locally}"
 
@@ -396,6 +453,9 @@ shellvnc_connect() {
   fi
 
   shellvnc_print_success_decrease_prefix "Connecting: success!" || return "$?"
+
+  # Clear return handler
+  trap - RETURN || return "$?"
 }
 
 shellvnc_required_after_function "${BASH_SOURCE[0]}" "$@" || return "$?" 2> /dev/null || exit "$?"

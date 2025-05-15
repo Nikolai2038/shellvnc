@@ -83,15 +83,23 @@ shellvnc_commands() {
     # (Only for Arch): If the package need to be installed from AUR (via "yay")
     local is_aur=0
 
-    # (Only for Windows):
-    # - 0: portable executable
-    # - 1: installer
-    # - 2: .zip archive
-    # - 3: .tar.zst archive
-    local windows_file_type=0
+    # (Only for Windows)
+    local windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_PORTABLE_EXECUTABLE}"
 
-    # (Only for Windows, if type is 2): If the package is a zip archive
+    # (Only for Windows, if type is .zip archive): If the package is a zip archive
     local path_to_exe_inside_archive=""
+
+    # (Only for Windows, if type is installer): Arguments for the installer
+    local installer_args=""
+
+    # (Only for Windows, if type is installer): Path to the executable after installation
+    local installed_exe_path=""
+
+    # (Only for Windows, if type is installer): Path to the uninstaller
+    local uninstaller_path=""
+
+    # (Only for Windows, if type is installer): Arguments for the uninstaller
+    local uninstaller_args=""
 
     # Even if we can by default consider that the package name is the same as the command name, we don't want to accidentally install wrong package.
     # And because this solution will has defined number of commands, we can easily add new commands to the list and make it more reliable.
@@ -149,13 +157,25 @@ shellvnc_commands() {
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
         package_name_or_link="pulseaudio-utils"
       elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
-        # shellvnc_print_warning "When installer shows up, please remember to enable \"${c_highlight}Allow module loading${c_return}\"!" || return "$?"
-        # package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pasetup.exe"
-        # windows_file_type=1
+        # ========================================
+        # Way 1: Installer
+        # ========================================
+        package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pasetup.exe"
+        windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_INSTALLER}"
 
-        package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pulseaudio.zip"
-        windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}"
-        path_to_exe_inside_archive="pulseaudio/bin/pactl.exe"
+        # NOTE: For arguments, see https://pgaskin.net/pulseaudio-win32/#readme
+        installer_args="/SILENT /COMPONENTS=pulseaudio,documentation,service,uninstall /TASKS=firewall/allowalledge,csvcmodload"
+        installed_exe_path='C:\Program Files (x86)\PulseAudio\bin\pactl.exe'
+        uninstaller_path="C:\Program Files (x86)\PulseAudio\unins000.exe"
+        uninstaller_args="/SILENT"
+        # ========================================
+
+        # ========================================
+        # Way 2: Portable executable
+        # ========================================
+        # package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pulseaudio.zip"
+        # windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}"
+        # path_to_exe_inside_archive="pulseaudio/bin/pactl.exe"
       fi
     else
       # Commands which have the same package name for all Linux distributions
@@ -219,12 +239,13 @@ shellvnc_commands() {
           command_to_execute="sudo curl --fail -L -o \"${executable_path}\" \"${package_name_or_link}\""
         elif [ "${windows_file_type}" = "${_SHELLVNC_WINDOWS_FILE_TYPE_INSTALLER}" ]; then
           shellvnc_print_text "Installation type: \"${c_highlight}Installer${c_return}\"!" || return "$?"
-          file_name="$(basename "${executable_path}")" || return "$?"
+          file_name="$(basename "${package_name_or_link}")" || return "$?"
 
           # 1. Download installer
           # 2. Run installer
-          # 3. Remove installer
-          command_to_execute="sudo curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && ./${file_name} || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
+          # 3. Create symlink so checks if this command is installed will work now
+          # 4. Remove installer
+          command_to_execute="curl --fail -L -o \"${file_name}\" \"${package_name_or_link}\" && powershell.exe -Command \"Start-Process -Wait -FilePath '${file_name}' -Verb RunAs -ArgumentList '${installer_args}'\" && sudo echo \"\\\"${installed_exe_path}\\\" \\\"\\\$@\\\"\" \">\" \"${link_path}\" && sudo chmod +x \"${link_path}\" || { error_code=\"\$?\" && rm \"${file_name}\"; shellvnc_print_error \"Error occurred while trying to install!\" || return \"\$?\"; return \"\${error_code}\"; }; rm \"${file_name}\"" || return "$?"
         elif [ "${windows_file_type}" = "${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}" ]; then
           shellvnc_print_text "Installation type: \"${c_highlight}.zip archive${c_return}\"!" || return "$?"
           file_name="$(basename "${package_name_or_link}")" || return "$?"
@@ -259,9 +280,11 @@ shellvnc_commands() {
           command_to_execute="sudo rm -rf \"${executable_path}\"" || return "$?"
         elif [ "${windows_file_type}" = "1" ]; then
           shellvnc_print_text "Uninstallation type: \"${c_highlight}Installer${c_return}\"!" || return "$?"
+          file_name="$(basename "${package_name_or_link}")" || return "$?"
 
-          shellvnc_print_error "Uninstalling \"${c_highlight}${command}${c_return}\" is not implemented for \"${c_highlight}${_SHELLVNC_CURRENT_OS_NAME}${c_return}\"!" || return "$?"
-          return 1
+          # 1. Delete symlink
+          # 2. Run uninstaller
+          command_to_execute="unlink \"${link_path}\" && powershell.exe -Command \"Start-Process -Wait -FilePath '${uninstaller_path}' -Verb RunAs -ArgumentList '${uninstaller_args}'\" || { error_code=\"\$?\"; shellvnc_print_error \"Error occurred while trying to uninstall!\" || return \"\$?\"; return \"\${error_code}\"; }" || return "$?"
         elif [ "${windows_file_type}" = "2" ]; then
           shellvnc_print_text "Uninstallation type: \"${c_highlight}.zip archive${c_return}\"!" || return "$?"
 
