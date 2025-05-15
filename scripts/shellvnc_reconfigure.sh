@@ -38,7 +38,7 @@ shellvnc_reconfigure() {
       local service_name
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
         service_name="vncserver@:${display}.service"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_UBUNTU}" ]; then
         service_name="tigervncserver@:${display}.service"
       else
         shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
@@ -72,7 +72,7 @@ shellvnc_reconfigure() {
   local config_path_from_user_home_directory
   if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
     config_path_from_user_home_directory=".config/tigervnc/config"
-  elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+  elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_UBUNTU}" ]; then
     config_path_from_user_home_directory=".vnc/config"
   else
     shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
@@ -129,7 +129,7 @@ EOF
     local service_name
     if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
       service_name="vncserver@:${display}.service"
-    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_UBUNTU}" ]; then
       service_name="tigervncserver@:${display}.service"
     else
       shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"

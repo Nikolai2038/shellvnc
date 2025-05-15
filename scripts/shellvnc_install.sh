@@ -92,7 +92,7 @@ AllowOverride=desktop,AcceptPointerEvents,SendCutText,AcceptCutText,SendPrimary,
 # Increase clipboard size to 100 Mb
 MaxCutText=$((1024 * 1024 * 100))
 EOF
-    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_UBUNTU}" ]; then
       # See "man vncserver-config-defaults"
       cat << EOF | sudo tee /etc/tigervnc/vncserver-config-defaults > /dev/null || return "$?"
 \$geometry = "800x600";
@@ -156,7 +156,7 @@ EOF
     local path_to_vnc_password=""
     if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
       path_to_vnc_password=".config/tigervnc/passwd"
-    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_UBUNTU}" ]; then
       path_to_vnc_password=".vnc/passwd"
     else
       shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"

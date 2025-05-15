@@ -107,14 +107,40 @@ shellvnc_commands() {
     # Windows: URL to download the executable for command.
     local package_name_or_link=""
 
+    local TRUE=0
+    local FALSE=1
+
+    function is_pacman() {
+      which pacman > /dev/null 2>&1 || return "${FALSE}"
+      return "${TRUE}"
+    }
+
+    function is_dnf() {
+      which dnf > /dev/null 2>&1 || return "${FALSE}"
+      return "${TRUE}"
+    }
+
+    function is_apt() {
+      which apt-get > /dev/null 2>&1 || return "${FALSE}"
+      return "${TRUE}"
+    }
+
+    function is_windows() {
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+        return "${TRUE}"
+      else
+        return "${FALSE}"
+      fi
+    }
+
     if [ "${command}" = "vncviewer" ]; then
-      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+      if is_pacman; then
         package_name_or_link="tigervnc"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+      elif is_dnf; then
         package_name_or_link="tigervnc"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      elif is_apt; then
         package_name_or_link="tigervnc-viewer"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+      elif is_windows; then
         # # Direct download - very slow sometimes
         # package_name_or_link="https://sourceforge.net/projects/tigervnc/files/stable/${TIGERVNC_VERSION_FOR_WINDOWS}/vncviewer64-${TIGERVNC_VERSION_FOR_WINDOWS}.exe/download"
 
@@ -124,39 +150,39 @@ shellvnc_commands() {
         windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_PORTABLE_EXECUTABLE}"
       fi
     elif [ "${command}" = "vncserver" ]; then
-      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+      if is_pacman; then
         package_name_or_link="tigervnc"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+      elif is_dnf; then
         package_name_or_link="tigervnc-server"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      elif is_apt; then
         package_name_or_link="tigervnc-standalone-server"
       fi
     elif [ "${command}" = "tput" ]; then
       if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_TERMUX}" ]; then
         package_name_or_link="ncurses-utils"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+      elif is_pacman; then
         package_name_or_link="ncurses"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+      elif is_dnf; then
         package_name_or_link="ncurses"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      elif is_apt; then
         package_name_or_link="ncurses-bin"
       fi
     elif [ "${command}" = "ssh" ]; then
-      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+      if is_pacman; then
         package_name_or_link="openssh"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+      elif is_dnf; then
         package_name_or_link="openssh-clients"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      elif is_apt; then
         package_name_or_link="openssh-client"
       fi
     elif [ "${command}" = "pactl" ]; then
-      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+      if is_pacman; then
         package_name_or_link="libpulse"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+      elif is_dnf; then
         package_name_or_link="pulseaudio-utils"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      elif is_apt; then
         package_name_or_link="pulseaudio-utils"
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+      elif is_windows; then
         # ========================================
         # Way 1: Installer
         # ========================================
@@ -179,9 +205,7 @@ shellvnc_commands() {
       fi
     else
       # Commands which have the same package name for all Linux distributions
-      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] \
-        || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ] \
-        || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+      if is_pacman || is_dnf || is_apt; then
         if [ "${command}" = "pstree" ]; then
           package_name_or_link="psmisc"
         else
@@ -192,7 +216,7 @@ shellvnc_commands() {
             fi
           done
         fi
-      elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+      elif is_windows; then
         if [ "${command}" = "sshpass" ]; then
           package_name_or_link="https://repo.msys2.org/msys/x86_64/sshpass-1.10-1-x86_64.pkg.tar.zst"
           windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_TAR_ZST_ARCHIVE}"
@@ -224,7 +248,7 @@ shellvnc_commands() {
     # Define installation steps
     # ========================================
     # Add hint for installing "jq" in Windows
-    if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
+    if is_windows; then
       local executable_path link_path file_name
 
       executable_path="/usr/bin/${command}.exe" || return "$?"
@@ -314,7 +338,7 @@ shellvnc_commands() {
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
         return 1
       fi
-    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ]; then
+    elif is_pacman; then
       if [ "${is_aur}" = "1" ]; then
         if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
           command_to_execute="yay --sync --refresh --needed --noconfirm ${package_name_or_link}"
@@ -334,7 +358,7 @@ shellvnc_commands() {
           return 1
         fi
       fi
-    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+    elif is_dnf; then
       if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
         command_to_execute="sudo dnf install -y ${package_name_or_link}"
       elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
@@ -343,7 +367,7 @@ shellvnc_commands() {
         shellvnc_print_error "Unknown action \"${c_highlight}${action}${c_return}\"!" || return "$?"
         return 1
       fi
-    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ]; then
+    elif is_apt; then
       if [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" ]; then
         command_to_execute="sudo apt-get update && sudo apt-get install -y ${package_name_or_link}"
       elif [ "${action}" = "${_SHELLVNC_COMMANDS_ACTION_UNINSTALL}" ]; then
