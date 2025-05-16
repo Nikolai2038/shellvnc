@@ -173,6 +173,8 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || shellvnc_return_0_if_alr
 . "./scripts/shell/shellvnc_init_current_os_type_and_name.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 
+shellvnc_init_current_os_type_and_name || return "$?" 2> /dev/null || exit "$?"
+
 # Main script
 shellvnc() {
   shellvnc_print_info_increase_prefix "Running scripts..." || return "$?"
@@ -181,8 +183,6 @@ shellvnc() {
     shellvnc_print_error "Usage: ${c_highlight}${FUNCNAME[0]} <install|reconfigure|uninstall|update|connect>${c_return}" || return "$?"
     return 1
   fi
-
-  shellvnc_init_current_os_type_and_name || return "$?"
 
   local action="$1" && shift
   if [ "${action}" = "install" ]; then
