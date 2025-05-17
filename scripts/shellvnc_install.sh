@@ -112,6 +112,22 @@ EOF
       shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
     fi
 
+    local service_name
+    if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_ARCH}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_FEDORA}" ]; then
+      service_name="vncserver@:.service"
+    elif [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_UBUNTU}" ]; then
+      service_name="tigervncserver@:.service"
+    else
+      shellvnc_throw_error_not_implemented "${LINENO}" || return "$?"
+    fi
+
+    # To make VNC sessions restart automatically after ending (when user logouts)
+    sudo mkdir "/etc/systemd/system/${service_name}.d" || return "$?"
+    echo '[Service]
+Restart=on-success
+RestartSec=3' | sudo tee "/etc/systemd/system/${service_name}.d/override.conf" || return "$?"
+    sudo systemctl daemon-reload || return "$?"
+
     shellvnc_reconfigure || return "$?"
     shellvnc_print_warning "By default, VNC server will be enabled only for current user. If you want to enable it for some other user, or not for current user, please, edit \"${c_highlight}${SHELLVNC_ENABLED_USERS_PATH}${c_return}\" file and run \"${c_highlight}./shellvnc.sh reconfigure${c_return}\"." || return "$?"
 
