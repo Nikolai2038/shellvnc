@@ -223,7 +223,7 @@ shellvnc_connect() {
   # Special args for every SSH connection to VMs
   declare -a n2038_extra_args_for_ssh_connections_to_vms=(
     # Timeout for the operation. Make sure to make it high enough to use SCP
-    -o "ConnectTimeout=15"
+    -o "ConnectTimeout=5"
   )
 
   if [ "${SHELLVNC_IS_DEVELOPMENT}" = "1" ]; then
@@ -471,21 +471,6 @@ shellvnc_connect() {
     # 0 meaning 8 colors, 1 meaning 64 colors (the default), 2 meaning 256 colors
     -LowColorLevel=2
     -FullColor=1
-
-    # TODO: Use this when connecting on physical machine
-    # # Transfer raw
-    # -PreferredEncoding=Raw
-    # # Disable custom compression
-    # -CustomCompressLevel=0
-    # -CompressLevel=9
-    # # Disable JPEG compression
-    # -NoJPEG=1
-    # -QualityLevel=9
-    # # If 17 ms is for 60 Hz, then 4 ms is for 240 Hz
-    # -PointerEventInterval=4
-    # # 0 meaning 8 colors, 1 meaning 64 colors (the default), 2 meaning 256 colors
-    # -LowColorLevel=2
-    # -FullColor
 
     # Increase clipboard size to 100 Mb
     -MaxCutText="$((1024 * 1024 * 100))"

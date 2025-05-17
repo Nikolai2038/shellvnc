@@ -183,9 +183,7 @@ shellvnc_commands() {
       elif is_apt; then
         package_name_or_link="pulseaudio-utils"
       elif is_windows; then
-        # ========================================
-        # Way 1: Installer
-        # ========================================
+        # We use installer and not portable executable, because it will configure firewall and other things automatically for us
         package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pasetup.exe"
         windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_INSTALLER}"
 
@@ -194,14 +192,6 @@ shellvnc_commands() {
         installed_exe_path='C:\Program Files (x86)\PulseAudio\bin\pactl.exe'
         uninstaller_path="C:\Program Files (x86)\PulseAudio\unins000.exe"
         uninstaller_args="/SILENT"
-        # ========================================
-
-        # ========================================
-        # Way 2: Portable executable
-        # ========================================
-        # package_name_or_link="https://github.com/pgaskin/pulseaudio-win32/releases/download/${PULSEAUDIO_VERSION_FOR_WINDOWS}/pulseaudio.zip"
-        # windows_file_type="${_SHELLVNC_WINDOWS_FILE_TYPE_ZIP_ARCHIVE}"
-        # path_to_exe_inside_archive="pulseaudio/bin/pactl.exe"
       fi
     else
       # Commands which have the same package name for all Linux distributions

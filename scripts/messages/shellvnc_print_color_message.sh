@@ -27,7 +27,7 @@ shellvnc_print_color_message() {
   fi
 
   local indent=""
-  if [ "${_SHELLVNC_MESSAGE_INDENT_LENGTH}" != "0" ]; then
+  if [ "${_SHELLVNC_MESSAGE_INDENT_LENGTH}" != "0" ] && [ "${SHELLVNC_MESSAGE_INDENT_SCALE}" != "0" ]; then
     local indent_length="$((_SHELLVNC_MESSAGE_INDENT_LENGTH * SHELLVNC_MESSAGE_INDENT_SCALE))" || return "$?"
     indent="$(eval "printf '%.s ' {1..${indent_length}}")" || return "$?"
   fi

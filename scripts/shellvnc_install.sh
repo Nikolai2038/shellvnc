@@ -80,8 +80,6 @@ FrameRate=240
 
 localhost=yes
 SecurityTypes=VncAuth
-PlainUsers=*
-PamService=login
 NeverShared=yes
 
 # Perform pixel comparison on framebuffer to reduce unnecessary updates. Can be either 0 (off), 1 (always) or 2 (auto). Default is 2.
@@ -100,8 +98,6 @@ EOF
 
 \$localhost = "yes";
 \$SecurityTypes = "VncAuth";
-\$PlainUsers = "*";
-\$PamService = "login";
 \$NeverShared = "yes";
 
 # Perform pixel comparison on framebuffer to reduce unnecessary updates. Can be either 0 (off), 1 (always) or 2 (auto). Default is 2.
