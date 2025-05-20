@@ -74,19 +74,7 @@ shellvnc_uninstall() {
     fi
     shellvnc_reconfigure || return "$?"
 
-    # TODO: Implement server uninstallation
-    # ...
-
     shellvnc_print_success_decrease_prefix "Uninstalling server: success!" || return "$?"
-  fi
-
-  if [ "${type}" = "client" ] || [ "${type}" = "both" ]; then
-    shellvnc_print_info_increase_prefix "Uninstalling client..." || return "$?"
-
-    # TODO: Implement client uninstallation
-    # ...
-
-    shellvnc_print_success_decrease_prefix "Uninstalling client: success!" || return "$?"
   fi
 
   shellvnc_print_info_increase_prefix "Uninstalling installed commands..." || return "$?"

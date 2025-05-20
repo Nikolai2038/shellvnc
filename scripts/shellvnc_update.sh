@@ -15,8 +15,7 @@ shellvnc_update() {
 
   shellvnc_check_requirements || return "$?"
 
-  # TODO: Implement updating
-  # ...
+  git -C "${SHELLVNC_PATH}" pull || return "$?"
 
   shellvnc_print_success_decrease_prefix "Updating: success!" || return "$?"
 }

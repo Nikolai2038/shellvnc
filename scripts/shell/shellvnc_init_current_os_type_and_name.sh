@@ -78,7 +78,6 @@ shellvnc_init_current_os_type_and_name() {
       # ========================================
       shellvnc_print_info_increase_prefix "Running temp file \"${c_highlight}${shellvnc_temp_file}${c_return}\" as administrator..." || return "$?"
 
-      # TODO: Find cause: For some reason, with '--noprofile', '--norc' it will freeze (and then, executing by hand will be okay).
       powershell.exe -Command "Start-Process -FilePath 'C:\Program Files\Git\git-bash.exe' -Verb RunAs -ArgumentList '${shellvnc_temp_file}'" || return "$?"
 
       # Wait for the temp file to be removed - this will happen when the command is finished
