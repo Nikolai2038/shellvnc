@@ -1,7 +1,13 @@
 #!/bin/bash
 
 # Fail command if any of pipeline blocks fail
-set -o pipefail
+set -o pipefail || return "$?" 2> /dev/null || exit "$?"
+
+# Helpful constant for functions that return 0 as true result
+export TRUE=0
+
+# Helpful constant for functions that return 1 as false result
+export FALSE=1
 
 # Path to the directory with the main script
 export SHELLVNC_PATH=""
@@ -54,6 +60,9 @@ export _SHELLVNC_CURRENT_OS_VERSION="${_SHELLVNC_CURRENT_OS_VERSION}"
 
 # Special return code when file is already sourced
 export _SHELLVNC_RETURN_CODE_WHEN_FILE_IS_ALREADY_SOURCED=238
+
+# Number of ports to check for free port (after specified one)
+export SHELLVNC_PORTS_NUMBER_TO_FIND_FREE=100
 
 # Check last return code.
 # If it is equal to the code when file is already sourced - return 0.

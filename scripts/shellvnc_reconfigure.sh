@@ -9,6 +9,7 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null
 . "./messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_throw_error_not_implemented.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./string/shellvnc_cat_without_comments_and_empty_lines.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./connect/shellvnc_get_free_port_locally.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
 shellvnc_reconfigure() {
@@ -89,10 +90,6 @@ shellvnc_reconfigure() {
       return 1
     fi
 
-    new_displays+=("${display_number}")
-    displays_for_new_user_names+="
-:${display_number}=${user}"
-
     shellvnc_print_info_increase_prefix "Creating VNC password for user \"${c_highlight}${user}${c_return}\"..." || return "$?"
     sudo su - "${user}" sh -c "echo -en '${password}\n${password}\nn\n' | vncpasswd" > /dev/null || return "$?"
     shellvnc_print_success_decrease_prefix "Creating VNC password for user \"${c_highlight}${user}${c_return}\": success!" || return "$?"
@@ -106,6 +103,15 @@ EOF
 
     local vnc_port
     vnc_port="$((5900 + display_number))" || return "$?"
+
+    # If the port is already in use, find a free one
+    vnc_port="$(shellvnc_get_free_port_locally "${vnc_port}")" || return "$?"
+    display_number="$((vnc_port - 5900))" || return "$?"
+
+    new_displays+=("${display_number}")
+    displays_for_new_user_names+="
+:${display_number}=${user}"
+
     sudo su - "${user}" sh -c "echo \"${vnc_port}\" > \"${user_home_directory}/${SHELLVNC_PATH_TO_FILE_WITH_USER_PORT}\"" || return "$?"
   done
 

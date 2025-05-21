@@ -14,6 +14,8 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null
 . "./connect/shellvnc_terminate_ssh_tunnel_L.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./connect/shellvnc_terminate_ssh_tunnel_R.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./connect/shellvnc_get_pid_file.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./connect/shellvnc_get_free_port_remotely.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./connect/shellvnc_get_free_port_locally.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
 # Connect to a VNC server.
@@ -121,19 +123,30 @@ shellvnc_connect() {
   shellvnc_print_success_decrease_prefix "Getting VNC port from the remote server: success!" || return "$?"
   # ========================================
 
-  # This must be the same as in service
+  # This must be the same as in service on current machine
   local usbip_port_client=3240
+  shellvnc_print_info "USB IP port for client: \"${c_highlight}${usbip_port_client}${c_return}\"." || return "$?"
 
-  # This can be anything
-  local usbip_port_server=3241
+  local usbip_port_server=3240
+  # Find new free port if it is already taken
+  usbip_port_server="$(shellvnc_get_free_port_remotely "${usbip_port_client}" "${host}:${port}" "${user}" "${password}")" || return "$?"
+  shellvnc_print_info "USB IP port for server: \"${c_highlight}${usbip_port_server}${c_return}\"." || return "$?"
 
-  local pulseaudio_port_client=4716
-  local pulseaudio_port_server=4715
+  local pulseaudio_port_client=4713
   # On Windows, we can use only default port, because firewall depends on it.
   # TODO: In the future, this probably can be customized.
   if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_WINDOWS}" ]; then
     pulseaudio_port_client=4713
+  else
+    # Find new free port if it is already taken
+    pulseaudio_port_client="$(shellvnc_get_free_port_locally "${pulseaudio_port_client}")" || return "$?"
   fi
+  shellvnc_print_info "PulseAudio port for client: \"${c_highlight}${pulseaudio_port_client}${c_return}\"." || return "$?"
+
+  local pulseaudio_port_server=4713
+  # Find new free port if it is already taken
+  pulseaudio_port_server="$(shellvnc_get_free_port_remotely "${pulseaudio_port_server}" "${host}:${port}" "${user}" "${password}")" || return "$?"
+  shellvnc_print_info "PulseAudio port for server: \"${c_highlight}${pulseaudio_port_server}${c_return}\"." || return "$?"
 
   # We must close tunnels and stop services in reverse order to make them properly exit.
   # shellcheck disable=SC2317
@@ -165,7 +178,7 @@ shellvnc_connect() {
       bus_id_to_forward="$(usbip --tcp-port "${usbip_port_client}" list -l | sed -En "s/^ - busid ([^ ]+) \\(${usb_device_to_forward}\\)\$/\\1/p")" || return "$?"
       shellvnc_print_text "Bus ID: ${c_highlight}${bus_id_to_forward}${c_return}." || return "$?"
 
-      # Forward USB device
+      # Close forwarded USB device
       sudo usbip --tcp-port "${usbip_port_client}" unbind -b "${bus_id_to_forward}" || true
 
       shellvnc_print_success_decrease_prefix "Stop forwarding USB device \"${usb_device_to_forward}\": success!" || return "$?"

@@ -107,9 +107,6 @@ shellvnc_commands() {
     # Windows: URL to download the executable for command.
     local package_name_or_link=""
 
-    local TRUE=0
-    local FALSE=1
-
     function is_pacman() {
       which pacman > /dev/null 2>&1 || return "${FALSE}"
       return "${TRUE}"
