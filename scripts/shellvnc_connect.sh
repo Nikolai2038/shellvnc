@@ -5,6 +5,7 @@
 shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 . "./messages/_constants.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_error.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "./messages/shellvnc_print_text.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_info_increase_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "./shell/shellvnc_check_requirements.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
@@ -120,6 +121,12 @@ shellvnc_connect() {
   shellvnc_print_success_decrease_prefix "Getting VNC port from the remote server: success!" || return "$?"
   # ========================================
 
+  # This must be the same as in service
+  local usbip_port_client=3240
+
+  # This can be anything
+  local usbip_port_server=3241
+
   local pulseaudio_port_client=4716
   local pulseaudio_port_server=4715
   # On Windows, we can use only default port, because firewall depends on it.
@@ -150,8 +157,22 @@ shellvnc_connect() {
     # ========================================
     shellvnc_print_info_increase_prefix "Closing USBIP tunnel..." || return "$?"
 
-    # TODO: Close USBIP
-    # ...
+    local usb_device_to_forward
+    for usb_device_to_forward in "${SHELLVNC_USB_DEVICES_TO_FORWARD[@]}"; do
+      shellvnc_print_info_increase_prefix "Stop forwarding USB device \"${usb_device_to_forward}\"..." || return "$?"
+
+      local bus_id_to_forward
+      bus_id_to_forward="$(usbip --tcp-port "${usbip_port_client}" list -l | sed -En "s/^ - busid ([^ ]+) \\(${usb_device_to_forward}\\)\$/\\1/p")" || return "$?"
+      shellvnc_print_text "Bus ID: ${c_highlight}${bus_id_to_forward}${c_return}." || return "$?"
+
+      # Forward USB device
+      sudo usbip --tcp-port "${usbip_port_client}" unbind -b "${bus_id_to_forward}" || true
+
+      shellvnc_print_success_decrease_prefix "Stop forwarding USB device \"${usb_device_to_forward}\": success!" || return "$?"
+    done
+
+    # Terminate SSH tunnels
+    shellvnc_terminate_ssh_tunnel_R "${user}" "${host}" "${port}" "${usbip_port_server}" "${usbip_port_client}" || true
 
     shellvnc_print_success_decrease_prefix "Closing USBIP tunnel: success!" || return "$?"
     # ========================================
@@ -200,7 +221,7 @@ shellvnc_connect() {
 
   {
     # Wait until VNC is connected and the virtual session is catched
-    sleep 5
+    sleep 3
 
     # ========================================
     # PulseAudio
@@ -218,9 +239,6 @@ shellvnc_connect() {
     PULSE_SERVER=tcp:127.0.0.1:${pulseaudio_port_client} pactl info || return "$?"
 
     shellvnc_print_success_decrease_prefix "Starting PulseAudio server: success!" || return "$?"
-
-    # Terminate SSH tunnels
-    shellvnc_terminate_ssh_tunnel_R "${user}" "${host}" "${port}" "${pulseaudio_port_server}" "${pulseaudio_port_client}" || return "$?"
 
     # Open SSH tunnels
     shellvnc_forward_port_via_ssh_R "${user}" "${host}" "${port}" "${pulseaudio_port_server}" "${pulseaudio_port_client}" "${password}" \
@@ -250,16 +268,49 @@ shellvnc_connect() {
     # ========================================
     # TODO: USBIP
     # ========================================
-    # ...
+    # Open SSH tunnels
+    shellvnc_forward_port_via_ssh_R "${user}" "${host}" "${port}" "${usbip_port_server}" "${usbip_port_client}" "${password}" \
+      "${n2038_extra_args_for_ssh_connections_to_vms[@]}" || return "$?"
+
+    local usb_device_to_forward
+    for usb_device_to_forward in "${SHELLVNC_USB_DEVICES_TO_FORWARD[@]}"; do
+      shellvnc_print_info_increase_prefix "Forwarding USB device \"${usb_device_to_forward}\"..." || return "$?"
+
+      local bus_id_to_forward
+      bus_id_to_forward="$(usbip --tcp-port "${usbip_port_client}" list -l | sed -En "s/^ - busid ([^ ]+) \\(${usb_device_to_forward}\\)\$/\\1/p")" || return "$?"
+      shellvnc_print_text "Bus ID: ${c_highlight}${bus_id_to_forward}${c_return}." || return "$?"
+
+      # Forward USB device
+      sudo usbip --tcp-port "${usbip_port_client}" bind -b "${bus_id_to_forward}" || true
+
+      shellvnc_print_success_decrease_prefix "Forwarding USB device \"${usb_device_to_forward}\": success!" || return "$?"
+
+      shellvnc_print_info_increase_prefix "Checking if USB device \"${usb_device_to_forward}\" is forwarded..." || return "$?"
+
+      sshpass "-p${password}" \
+        ssh \
+        -p "${port}" \
+        "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
+        "${user}@${host}" \
+        "usbip --tcp-port \"${usbip_port_server}\" list -r 127.0.0.1" | grep -q "${usb_device_to_forward}" || return "$?"
+
+      shellvnc_print_success_decrease_prefix "Checking if USB device \"${usb_device_to_forward}\" is forwarded: success!" || return "$?"
+
+      shellvnc_print_info_increase_prefix "Connecting to USB device \"${usb_device_to_forward}\"..." || return "$?"
+      sshpass "-p${password}" \
+        ssh \
+        -p "${port}" \
+        "${n2038_extra_args_for_ssh_connections_to_vms[@]}" \
+        "${user}@${host}" \
+        "echo  \"${password}\" | sudo -S usbip --tcp-port \"${usbip_port_server}\" attach -r 127.0.0.1 -b \"${bus_id_to_forward}\"" || return "$?"
+      shellvnc_print_success_decrease_prefix "Connecting to USB device \"${usb_device_to_forward}\": success!" || return "$?"
+    done
     # ========================================
   } &
 
   # ========================================
   # VNC
   # ========================================
-  # Terminate SSH tunnels
-  shellvnc_terminate_ssh_tunnel_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" || return "$?"
-
   # Open SSH tunnels
   shellvnc_forward_port_via_ssh_L "${user}" "${host}" "${port}" "${vnc_port}" "${vnc_port}" "${password}" \
     "${n2038_extra_args_for_ssh_connections_to_vms[@]}" || return "$?"

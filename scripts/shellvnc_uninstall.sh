@@ -28,6 +28,28 @@ shellvnc_uninstall() {
 
   if [ "${type}" = "server" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Uninstalling server..." || return "$?"
+    if [ "${_SHELLVNC_CURRENT_OS_TYPE}" != "${_SHELLVNC_OS_TYPE_LINUX}" ]; then
+      shellvnc_print_error "Uninstallation of server is only supported on Linux OS type!" || return "$?"
+      return 1
+    fi
+
+    # ========================================
+    # USB IP
+    # ========================================
+    if sudo [ -f /etc/modules-load.d/shellvnc_vhci_hcd.conf ]; then
+      shellvnc_print_info_increase_prefix "Removing USB IP kernel module..." || return "$?"
+
+      # Unload kernel module right now
+      if lsmod | awk '{print $1}' | grep -q vhci_hcd; then
+        sudo modprobe -r vhci_hcd || return "$?"
+      fi
+
+      # Unload kernel module on system start
+      sudo rm /etc/modules-load.d/shellvnc_vhci_hcd.conf || return "$?"
+
+      shellvnc_print_success_decrease_prefix "Removing USB IP kernel module: success!" || return "$?"
+    fi
+    # ========================================
 
     # ========================================
     # Desktop entry
@@ -50,11 +72,15 @@ shellvnc_uninstall() {
     shellvnc_print_info_increase_prefix "Removing PolKit rules..." || return "$?"
 
     if sudo [ -f /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-change-network.rules ]; then
-      sudo rm /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-change-network.rules
+      sudo rm /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-change-network.rules || return "$?"
     fi
 
     if sudo [ -f /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-reboot.rules ]; then
-      sudo rm /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-reboot.rules
+      sudo rm /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-reboot.rules || return "$?"
+    fi
+
+    if sudo [ -f /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-configure-usb-devices.rules ]; then
+      sudo rm /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-configure-usb-devices.rules || return "$?"
     fi
 
     shellvnc_print_success_decrease_prefix "Removing PolKit rules: success!" || return "$?"
@@ -75,6 +101,38 @@ shellvnc_uninstall() {
     shellvnc_reconfigure || return "$?"
 
     shellvnc_print_success_decrease_prefix "Uninstalling server: success!" || return "$?"
+  fi
+
+  if [ "${type}" = "client" ] || [ "${type}" = "both" ]; then
+    shellvnc_print_info_increase_prefix "Uninstalling client..." || return "$?"
+
+    # ========================================
+    # USB IP
+    # ========================================
+    if [ "${_SHELLVNC_CURRENT_OS_TYPE}" = "${_SHELLVNC_OS_TYPE_LINUX}" ]; then
+      if sudo [ -f /etc/modules-load.d/shellvnc_usbip_host.conf ]; then
+        shellvnc_print_info_increase_prefix "Removing USB IP kernel module..." || return "$?"
+
+        # Unload kernel module right now
+        if lsmod | awk '{print $1}' | grep -q usbip_host; then
+          sudo modprobe -r usbip_host || return "$?"
+        fi
+
+        # Unload kernel module on system start
+        sudo rm /etc/modules-load.d/shellvnc_usbip_host.conf || return "$?"
+
+        shellvnc_print_success_decrease_prefix "Removing USB IP kernel module: success!" || return "$?"
+      fi
+    elif [ "${_SHELLVNC_CURRENT_OS_TYPE}" = "${_SHELLVNC_OS_TYPE_WINDOWS}" ]; then
+      # Windows does not need any configuration
+      :
+    else
+      shellvnc_print_error "USB IP is not supported on OS type \"${c_highlight}${_SHELLVNC_CURRENT_OS_TYPE}${c_return}\"!" || return "$?"
+      return 1
+    fi
+    # ========================================
+
+    shellvnc_print_success_decrease_prefix "Uninstalling client: success!" || return "$?"
   fi
 
   shellvnc_print_info_increase_prefix "Uninstalling installed commands..." || return "$?"

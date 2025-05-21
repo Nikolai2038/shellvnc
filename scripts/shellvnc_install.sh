@@ -30,6 +30,11 @@ shellvnc_install() {
   if [ "${type}" = "server" ] || [ "${type}" = "both" ]; then
     shellvnc_print_info_increase_prefix "Installing server..." || return "$?"
 
+    if [ "${_SHELLVNC_CURRENT_OS_TYPE}" != "${_SHELLVNC_OS_TYPE_LINUX}" ]; then
+      shellvnc_print_error "Installation of server is only supported on Linux OS type!" || return "$?"
+      return 1
+    fi
+
     local session_type_file
     session_type_file="$(find /usr/share/xsessions -type f -name '*.desktop' | head -n 1)" || return "$?"
     if [ -z "${session_type_file}" ]; then
@@ -122,7 +127,7 @@ EOF
     fi
 
     # To make VNC sessions restart automatically after ending (when user logouts)
-    sudo mkdir "/etc/systemd/system/${service_name}.d" || return "$?"
+    sudo mkdir --parents "/etc/systemd/system/${service_name}.d" || return "$?"
     echo '[Service]
 Restart=on-success
 RestartSec=3' | sudo tee "/etc/systemd/system/${service_name}.d/override.conf" || return "$?"
@@ -151,6 +156,16 @@ EOF
 polkit.addRule(function(action, subject) {
   // Allow administrators to configure NetworkManager
   if (action.id.startsWith("org.freedesktop.NetworkManager.") && (subject.isInGroup("sudo") || subject.isInGroup("wheel"))) {
+    return polkit.Result.YES;
+  }
+});
+EOF
+
+    # Allow administrators to configure USB devices
+    cat << EOF | sudo tee /etc/polkit-1/rules.d/99-shellvnc-allow-admins-to-configure-usb-devices.rules > /dev/null || return "$?"
+polkit.addRule(function(action, subject) {
+  // Allow administrators to configure USB devices
+  if (action.id.startsWith("org.freedesktop.udisks2.") && (subject.isInGroup("sudo") || subject.isInGroup("wheel"))) {
     return polkit.Result.YES;
   }
 });
@@ -272,6 +287,16 @@ EOF
     shellvnc_print_warning "Please, restart your display manager (or just reboot) for new desktop entry to be shown." || return "$?"
     # ========================================
 
+    # ========================================
+    # USB IP
+    # ========================================
+    # Load kernel module right now
+    sudo modprobe vhci_hcd || return "$?"
+
+    # Load kernel module on system start
+    echo 'vhci_hcd' | sudo tee /etc/modules-load.d/shellvnc_vhci_hcd.conf || return "$?"
+    # ========================================
+
     shellvnc_print_success_decrease_prefix "Installing server: success!" || return "$?"
   fi
 
@@ -279,6 +304,27 @@ EOF
     shellvnc_print_info_increase_prefix "Installing client..." || return "$?"
 
     shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" vncviewer pactl ssh sshpass usbip || return "$?"
+
+    # ========================================
+    # USB IP
+    # ========================================
+    if [ "${_SHELLVNC_CURRENT_OS_TYPE}" = "${_SHELLVNC_OS_TYPE_LINUX}" ]; then
+      # Load kernel module right now
+      sudo modprobe usbip_host || return "$?"
+
+      # Load kernel module on system start
+      echo 'usbip_host' | sudo tee /etc/modules-load.d/shellvnc_usbip_host.conf || return "$?"
+
+      # Start USBIP daemon
+      sudo systemctl enable --now usbipd.service || return "$?"
+    elif [ "${_SHELLVNC_CURRENT_OS_TYPE}" = "${_SHELLVNC_OS_TYPE_WINDOWS}" ]; then
+      # Windows does not need any configuration
+      :
+    else
+      shellvnc_print_error "USB IP is not supported on OS type \"${c_highlight}${_SHELLVNC_CURRENT_OS_TYPE}${c_return}\"!" || return "$?"
+      return 1
+    fi
+    # ========================================
 
     shellvnc_print_success_decrease_prefix "Installing client: success!" || return "$?"
   fi
