@@ -211,8 +211,12 @@ vnc_args='
   -MenuKey=Scroll_Lock
   -ViewOnly=0
 
+  # Enable clipboard sync
   -AcceptClipboard=1
-  -SendPrimary=1
+  -SendClipboard=1
+  # Make clipboard sync to work as expected
+  -SendPrimary=0
+  -SetPrimary=0
 
   # Because we use SSH tunnels, we do not need to use IPv6
   -UseIPv6=0
