@@ -9,6 +9,7 @@ shellvnc_required_before_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null
 . "../messages/shellvnc_print_error.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "../messages/shellvnc_print_warning.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 . "../messages/shellvnc_print_success_decrease_prefix.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
+. "../messages/shellvnc_throw_warning_not_implemented.sh" || shellvnc_return_0_if_already_sourced || return "$?" 2> /dev/null || exit "$?"
 shellvnc_required_after_imports "${BASH_SOURCE[0]}" || return "$?" 2> /dev/null || exit "$?"
 
 _SHELLVNC_COMMANDS_ACTION_INSTALL="install"
@@ -195,6 +196,15 @@ shellvnc_commands() {
       if is_pacman || is_dnf || is_apt; then
         if [ "${command}" = "pstree" ]; then
           package_name_or_link="psmisc"
+        elif [ "${command}" = "clipboard-sync" ]; then
+          package_name_or_link="clipboard-sync"
+          if is_pacman; then
+            is_aur="1"
+          elif is_dnf; then
+            # TODO: Install "clipboard-sync" for Fedora (https://github.com/Nikolai2038/shellvnc/issues/2)
+            shellvnc_throw_warning_not_implemented "${LINENO}" || return "$?"
+            return 0
+          fi
         else
           local __same_command
           for __same_command in which sed grep git ssh scp sshpass usbip openbox zstd jq; do
@@ -230,6 +240,17 @@ shellvnc_commands() {
     # ========================================
 
     local command_to_execute=""
+
+    # ========================================
+    # Define pre installation steps
+    # ========================================
+    if [ "${command}" = "clipboard-sync" ]; then
+      if [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_DEBIAN}" ] || [ "${_SHELLVNC_CURRENT_OS_NAME}" = "${_SHELLVNC_OS_NAME_UBUNTU}" ]; then
+        # See https://github.com/dnut/clipboard-sync?tab=readme-ov-file#ubuntu--debian
+        command_to_execute="${command_to_execute} && curl --fail -L -o /etc/apt/sources.list.d/dnut.list https://raw.githubusercontent.com/dnut/deb/master/dnut.list"
+      fi
+    fi
+    # ========================================
 
     # ========================================
     # Define installation steps
@@ -374,6 +395,8 @@ shellvnc_commands() {
     # ========================================
     if [ "${command}" = "debtap" ]; then
       command_to_execute="${command_to_execute} && sudo debtap -u"
+    elif [ "${command}" = "clipboard-sync" ]; then
+      command_to_execute="${command_to_execute} && systemctl --user enable --now clipboard-sync.service"
     fi
     # ========================================
 

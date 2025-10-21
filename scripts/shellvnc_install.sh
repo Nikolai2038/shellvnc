@@ -330,6 +330,15 @@ EOF
     fi
     # ========================================
 
+    # ========================================
+    # Wayland clipboard sync
+    # See https://github.com/dnut/clipboard-sync
+    # ========================================
+    if [ "${_SHELLVNC_CURRENT_OS_TYPE}" = "${_SHELLVNC_OS_TYPE_LINUX}" ]; then
+      shellvnc_commands "${_SHELLVNC_COMMANDS_ACTION_INSTALL}" clipboard-sync || return "$?"
+    fi
+    # ========================================
+
     shellvnc_print_success_decrease_prefix "Installing client: success!" || return "$?"
   fi
 
