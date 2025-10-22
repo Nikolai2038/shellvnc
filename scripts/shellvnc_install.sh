@@ -81,7 +81,7 @@ EOF
       # See "man Xvnc"
       cat << EOF | sudo tee /etc/tigervnc/vncserver-config-defaults > /dev/null || return "$?"
 geometry=800x600
-FrameRate=240
+FrameRate=60
 
 localhost=yes
 SecurityTypes=VncAuth
@@ -99,7 +99,7 @@ EOF
       # See "man vncserver-config-defaults"
       cat << EOF | sudo tee /etc/tigervnc/vncserver-config-defaults > /dev/null || return "$?"
 \$geometry = "800x600";
-\$FrameRate = "240";
+\$FrameRate = "60";
 
 \$localhost = "yes";
 \$SecurityTypes = "VncAuth";
@@ -224,10 +224,11 @@ vnc_args='
   # We select quality level ourselves
   -AutoSelect=0
 
-  # Transfer raw
+  # We use raw encoding, because it is the most stable - using other causes performance loss from time to time
   -PreferredEncoding=Raw
-  # Disable custom compression
-  -CustomCompressLevel=0
+  # Enable custom compression
+  -CustomCompressLevel=1
+  # Use best compression
   -CompressLevel=9
   # Disable JPEG compression
   -NoJPEG=1
@@ -254,7 +255,7 @@ vnc_args='
   -FullscreenSystemKeys
 ' || true
 
-if [ "${SHELLVNC_IS_DEVELOPMENT}" = "1" ]; then
+if [ "${SHELLVNC_IS_DEBUG}" = "1" ]; then
   vnc_args="\${vnc_args}"'
     # Default is "*:stderr:30"
     -Log="*:stderr:30"

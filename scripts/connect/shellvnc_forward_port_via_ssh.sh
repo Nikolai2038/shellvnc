@@ -39,6 +39,92 @@ shellvnc_forward_port_via_ssh() {
 
   local extra_ssh_args=("$@")
 
+  if [ "${SHELLVNC_IS_COMPRESS}" = "1" ]; then
+    if [ -z "${SHELLVNC_SSH_BEST_COMPRESSION_ALGORITHMS}" ]; then
+      shellvnc_print_info_increase_prefix "Testing SSH ciphers to find the best one for compression..." || return "$?"
+
+      declare -a ciphers=()
+      # shellcheck disable=SC2207
+      ciphers=($(ssh -Q cipher))
+      shellvnc_print_info "Supported client ciphers: ${c_highlight}${ciphers[*]}${c_return}." || return "$?"
+
+      # Check ciphers and sort them by time from fastest to slowest
+      local results=""
+
+      local counts=4
+      local cipher="NONE"
+
+      # ========================================
+      # Test without compression
+      # ========================================
+      local result
+      {
+        result="$(time (dd if=/dev/zero bs=4M count="${counts}" | sshpass -p"${password}" ssh -p "${port}" "${user}@${host}" "cat > /dev/null") 2>&1 | head -n 3 | tail -n 1)" || return "$?"
+      } 2> /dev/null
+
+      local time_in_seconds
+      time_in_seconds="$(echo "${result}" | sed -En 's/^.* (.+) .+, .+ .+$/\1/p')" || return "$?"
+
+      results+="${time_in_seconds} ${cipher}
+"
+      # ========================================
+
+      # ========================================
+      # Test with compression for all client ciphers
+      # ========================================
+      for cipher in "${ciphers[@]}"; do
+        {
+          # NOTE: We skip unsupported ciphers
+          result="$(time (dd if=/dev/zero bs=4M count="${counts}" | sshpass -p"${password}" ssh -p "${port}" -C -c "${cipher}" "${user}@${host}" "cat > /dev/null") 2>&1 | head -n 3 | tail -n 1)" || continue
+        } 2> /dev/null
+
+        local time_in_seconds
+        time_in_seconds="$(echo "${result}" | sed -En 's/^.* (.+) .+, .+ .+$/\1/p')" || return "$?"
+
+        results+="${time_in_seconds} ${cipher}
+"
+
+        shellvnc_print_info "Tested cipher \"${c_highlight}${cipher}${c_return}\": ${c_highlight}${time_in_seconds}${c_return} seconds." || return "$?"
+
+      done
+      # ========================================
+
+      # Remove empty lines and sort ciphers from fastest to slowest
+      results="$(echo "${results}" | grep -Ev '^$' | sort -n)" || return "$?"
+
+      shellvnc_print_info "Test cipher results:" || return "$?"
+      echo "${results}" >&2
+
+      local list
+      list="$(echo -n "${results}" | cut -d ' ' -f 2)" || return "$?"
+      list="${list//$'\n'/,}" || return "$?"
+
+      export SHELLVNC_SSH_BEST_COMPRESSION_ALGORITHMS="${list}"
+
+      shellvnc_print_success_decrease_prefix "Testing SSH ciphers to find the best one for compression: done!" || return "$?"
+    fi
+
+    shellvnc_print_success "Best SSH ciphers for compression: \"${c_highlight}${SHELLVNC_SSH_BEST_COMPRESSION_ALGORITHMS}${c_return}\"." || return "$?"
+
+    # If "none" is not the fastest - we will use compression
+    if ! echo "${SHELLVNC_SSH_BEST_COMPRESSION_ALGORITHMS}" | grep -qE "^${NONE}"; then
+      extra_ssh_args+=(
+        # Enable compression
+        -C
+
+        # Compression algorithms to use with priority (from best to worst)
+        # NOTE: Remove "none" from the list
+        -o Ciphers="${SHELLVNC_SSH_BEST_COMPRESSION_ALGORITHMS//",${NONE}"/}"
+      )
+    fi
+  fi
+
+  if [ "${SHELLVNC_IS_DEBUG}" = "1" ]; then
+    extra_ssh_args+=(
+      -v
+    )
+  fi
+
   local pid_file
   pid_file="$(shellvnc_get_pid_file "$user" "$host" "$port" "$first_port" "$second_port" "$direction")" || return "$?"
 
